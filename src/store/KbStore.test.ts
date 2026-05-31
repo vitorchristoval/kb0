@@ -2,8 +2,9 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { type GitAdapter } from '../git/GitAdapter.js';
-import { KbConflictError, KbNotFoundError, KbStore } from './KbStore.js';
+import { KbConflictError, KbNotFoundError } from '../errors.js';
+import type { GitAdapter } from '../git/GitAdapter.js';
+import { KbStore } from './KbStore.js';
 
 function mockGit(): GitAdapter {
   return {
@@ -33,18 +34,23 @@ describe('KbStore', () => {
   });
 
   describe('write', () => {
-    it('writes a note and returns a sha256 hash', async () => {
-      const hash = await store.write('notes/test.md', {
+    it('writes a note and returns hash + id', async () => {
+      const result = await store.write('notes/test.md', {
         title: 'Test',
         author: 'human',
         content: 'Hello world',
       });
-      expect(hash).toHaveLength(64);
+      expect(result.hash).toHaveLength(64);
+      expect(result.id).toMatch(/^[0-9a-f-]{36}$/);
     });
 
-    it('calls git.addAndCommit with the correct path', async () => {
-      await store.write('notes/test.md', { title: 'T', author: 'human', content: 'x' });
-      expect(git.addAndCommit).toHaveBeenCalledWith('notes/test.md', 'feat: add notes/test.md');
+    it('calls git.addAndCommit on write', async () => {
+      await store.write('notes/git-test.md', {
+        title: 'Git Test',
+        author: 'human',
+        content: 'test',
+      });
+      expect(git.addAndCommit).toHaveBeenCalledWith('notes/git-test.md', 'feat: add notes/git-test.md');
     });
 
     it('creates nested directories automatically', async () => {
@@ -75,7 +81,7 @@ describe('KbStore', () => {
 
   describe('update', () => {
     it('updates content when hash matches', async () => {
-      const hash = await store.write('notes/update.md', {
+      const { hash } = await store.write('notes/update.md', {
         title: 'Update',
         author: 'human',
         content: 'original',
@@ -90,7 +96,7 @@ describe('KbStore', () => {
     });
 
     it('preserves the original id and created timestamp', async () => {
-      const hash = await store.write('notes/preserve.md', {
+      const { hash } = await store.write('notes/preserve.md', {
         title: 'Preserve',
         author: 'human',
         content: 'v1',
@@ -115,7 +121,7 @@ describe('KbStore', () => {
       await expect(
         store.update('notes/conflict.md', {
           content: 'boom',
-          expectedHash: 'wrong',
+          expectedHash: 'wrong'.padEnd(64, '0'),
           author: 'human',
         }),
       ).rejects.toThrow(KbConflictError);
@@ -123,7 +129,7 @@ describe('KbStore', () => {
 
     it('throws KbNotFoundError for a missing note', async () => {
       await expect(
-        store.update('ghost.md', { content: 'x', expectedHash: 'y', author: 'human' }),
+        store.update('ghost.md', { content: 'x', expectedHash: 'y'.padEnd(64, '0'), author: 'human' }),
       ).rejects.toThrow(KbNotFoundError);
     });
   });

@@ -2,6 +2,7 @@
 import { Command } from 'commander';
 import { initVault } from './commands/init.js';
 import { reindexVault } from './commands/reindex.js';
+import { serveVault } from './commands/serve.js';
 
 const program = new Command();
 
@@ -14,5 +15,12 @@ program
   .description('Index or reindex notes in the current vault')
   .option('--rebuild', 'rebuild the full index from scratch', false)
   .action(reindexVault);
+
+program
+  .command('serve')
+  .description('Start the MCP server for a vault')
+  .option('--vault <path>', 'vault directory (default: cwd)')
+  .option('--agent <name>', 'agent identity for provenance (required)')
+  .action(serveVault);
 
 program.parse();

@@ -25,11 +25,42 @@ export interface SearchResultItem {
   author: string;
   status: string;
   score: number;
+  excerpt: string;
 }
 
 export interface SearchResult {
   results: SearchResultItem[];
   warnings: SearchWarning[];
+}
+
+export interface ListFilters {
+  prefix?: string;
+  tag?: string;
+  status?: string;
+  limit?: number;
+}
+
+export interface ListRow {
+  id: string;
+  path: string;
+  title: string;
+  author: string;
+  status: string;
+  tags: string[];
+}
+
+export interface LinkRow {
+  path: string;
+  title: string;
+}
+
+export interface RecentRow {
+  id: string;
+  path: string;
+  title: string;
+  author: string;
+  status: string;
+  updated_at: string;
 }
 
 interface NoteRow {
@@ -74,7 +105,7 @@ export class KbIndex {
       .run(this.embedding.model, this.embedding.dimensions);
   }
 
-  private countStaleEmbeddings(): number {
+  countStaleEmbeddings(): number {
     const row = this.db
       .prepare('SELECT COUNT(*) as n FROM embeddings WHERE stale = 1')
       .get() as { n: number };
@@ -114,6 +145,8 @@ export class KbIndex {
 
     const text = `${note.frontmatter.title}\n\n${note.content}`;
     const [vector] = await this.embedding.embed([text]);
+    // Merge frontmatter tags (YAML array) with inline #hashtags from body.
+    const allTags = [...new Set([...note.frontmatter.tags, ...tags])];
     // Store the file's mtime as last_indexed_at so filterNeedsIndexing can do
     // an exact mtime comparison — avoids clock-precision races.
     const now = stat.mtime.toISOString();
@@ -126,7 +159,7 @@ export class KbIndex {
         .get(notePath, note.frontmatter.id) as { id: string } | undefined;
       if (clash) {
         this.db.prepare('DELETE FROM notes_fts WHERE note_id = ?').run(clash.id);
-        this.db.prepare('DELETE FROM notes WHERE id = ?').run(clash.id); // cascades tags/links/embeddings
+        this.db.prepare('DELETE FROM notes WHERE id = ?').run(clash.id);
       }
 
       this.db
@@ -134,11 +167,11 @@ export class KbIndex {
           `INSERT INTO notes (id, path, title, author, status, created_at, updated_at, last_indexed_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
            ON CONFLICT(id) DO UPDATE SET
-             path           = excluded.path,
-             title          = excluded.title,
-             author         = excluded.author,
-             status         = excluded.status,
-             updated_at     = excluded.updated_at,
+             path            = excluded.path,
+             title           = excluded.title,
+             author          = excluded.author,
+             status          = excluded.status,
+             updated_at      = excluded.updated_at,
              last_indexed_at = excluded.last_indexed_at`,
         )
         .run(
@@ -158,10 +191,8 @@ export class KbIndex {
         .run(note.frontmatter.id, note.frontmatter.title, note.content);
 
       this.db.prepare('DELETE FROM tags WHERE note_id = ?').run(note.frontmatter.id);
-      for (const tag of tags) {
-        this.db
-          .prepare('INSERT INTO tags (note_id, tag) VALUES (?, ?)')
-          .run(note.frontmatter.id, tag);
+      for (const tag of allTags) {
+        this.db.prepare('INSERT INTO tags (note_id, tag) VALUES (?, ?)').run(note.frontmatter.id, tag);
       }
 
       this.db.prepare('DELETE FROM links WHERE source_id = ?').run(note.frontmatter.id);
@@ -207,16 +238,23 @@ export class KbIndex {
   async search(query: string, opts: SearchOptions = {}): Promise<SearchResult> {
     const { mode = 'hybrid', ranking = 'rrf', alpha = 0.6, limit = 10 } = opts;
     const warnings: SearchWarning[] = [];
+    const excerpts = new Map<string, string>();
 
+    // keyword search — uses FTS5 snippet() for highlighted excerpts
     let kwIds: string[] = [];
     if (mode === 'keyword' || mode === 'hybrid') {
-      kwIds = this.runKeywordSearch(query, limit * 2);
+      const kwItems = this.runKeywordSearch(query, limit * 2);
+      kwIds = kwItems.map((i) => i.noteId);
+      kwItems.forEach((i) => excerpts.set(i.noteId, i.excerpt));
     }
 
+    // semantic search — fetches plain excerpts (first 200 chars)
     let semItems: Array<{ noteId: string; distance: number }> = [];
     if (mode === 'semantic' || mode === 'hybrid') {
       if (this.countStaleEmbeddings() > 0) warnings.push('SEMANTIC_DEGRADED');
       semItems = await this.runSemanticSearch(query, limit * 2);
+      const semIdsNeedExcerpt = semItems.map((i) => i.noteId).filter((id) => !excerpts.has(id));
+      this.getExcerpts(semIdsNeedExcerpt).forEach((exc, id) => excerpts.set(id, exc));
     }
 
     const semIds = semItems.map((i) => i.noteId);
@@ -232,11 +270,80 @@ export class KbIndex {
       rankedIds = weightedFusion(kwIds, semItems, alpha, limit * 2);
     }
 
-    const results = this.fetchNotes(rankedIds.slice(0, limit), rankedIds);
+    const results = this.fetchNotes(rankedIds.slice(0, limit), rankedIds, excerpts);
     return { results, warnings };
   }
 
-  /** Returns paths that need reindexing: new files, mtime-changed files, stale embeddings. */
+  // ── query methods ────────────────────────────────────────────────────────────
+
+  list(filters: ListFilters = {}): ListRow[] {
+    const { prefix, tag, status, limit = 50 } = filters;
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+
+    let sql = 'SELECT DISTINCT n.id, n.path, n.title, n.author, n.status FROM notes n';
+
+    if (tag) {
+      sql += ' JOIN tags t ON t.note_id = n.id';
+      conditions.push('t.tag = ?');
+      params.push(tag);
+    }
+    if (prefix) {
+      conditions.push('n.path LIKE ?');
+      params.push(`${prefix}%`);
+    }
+    if (status) {
+      conditions.push('n.status = ?');
+      params.push(status);
+    }
+    if (conditions.length > 0) sql += ' WHERE ' + conditions.join(' AND ');
+    sql += ' ORDER BY n.updated_at DESC LIMIT ?';
+    params.push(limit);
+
+    const rows = this.db.prepare(sql).all(...params) as NoteRow[];
+    return rows.map((row) => {
+      const tags = (
+        this.db.prepare('SELECT tag FROM tags WHERE note_id = ?').all(row.id) as { tag: string }[]
+      ).map((r) => r.tag);
+      return { id: row.id, path: row.path, title: row.title, author: row.author, status: row.status, tags };
+    });
+  }
+
+  backlinks(notePath: string): LinkRow[] {
+    return this.db
+      .prepare(
+        `SELECT n.path, n.title
+         FROM links l
+         JOIN notes n ON l.source_id = n.id
+         WHERE l.target_path = ?
+         ORDER BY n.updated_at DESC`,
+      )
+      .all(notePath) as LinkRow[];
+  }
+
+  links(notePath: string): LinkRow[] {
+    return this.db
+      .prepare(
+        `SELECT l.target_path as path, COALESCE(n.title, l.target_path) as title
+         FROM links l
+         LEFT JOIN notes n ON n.path = l.target_path
+         WHERE l.source_id = (SELECT id FROM notes WHERE path = ?)
+         ORDER BY l.target_path`,
+      )
+      .all(notePath) as LinkRow[];
+  }
+
+  recent(limit: number): RecentRow[] {
+    return this.db
+      .prepare(
+        `SELECT id, path, title, author, status, updated_at
+         FROM notes ORDER BY updated_at DESC LIMIT ?`,
+      )
+      .all(limit) as RecentRow[];
+  }
+
+  // ── reindex helpers ──────────────────────────────────────────────────────────
+
   async filterNeedsIndexing(relativePaths: string[]): Promise<string[]> {
     const needsIndex = new Set<string>();
 
@@ -262,11 +369,9 @@ export class KbIndex {
       .all() as { path: string }[];
 
     staleRows.forEach((r) => needsIndex.add(r.path));
-
     return [...needsIndex];
   }
 
-  /** Clears all index data. Used by `kb0 reindex --rebuild`. */
   rebuild(): void {
     this.db.transaction(() => {
       this.db.exec(`
@@ -284,14 +389,22 @@ export class KbIndex {
     this.db.close();
   }
 
-  private runKeywordSearch(query: string, limit: number): string[] {
+  // ── private helpers ──────────────────────────────────────────────────────────
+
+  private runKeywordSearch(
+    query: string,
+    limit: number,
+  ): Array<{ noteId: string; excerpt: string }> {
     const ftsQuery = buildFtsQuery(query);
     if (!ftsQuery) return [];
     try {
       const rows = this.db
-        .prepare('SELECT note_id FROM notes_fts WHERE notes_fts MATCH ? ORDER BY rank LIMIT ?')
-        .all(ftsQuery, limit) as { note_id: string }[];
-      return rows.map((r) => r.note_id);
+        .prepare(
+          `SELECT note_id, snippet(notes_fts, 2, '**', '**', '…', 15) as excerpt
+           FROM notes_fts WHERE notes_fts MATCH ? ORDER BY rank LIMIT ?`,
+        )
+        .all(ftsQuery, limit) as Array<{ note_id: string; excerpt: string }>;
+      return rows.map((r) => ({ noteId: r.note_id, excerpt: r.excerpt ?? '' }));
     } catch {
       return [];
     }
@@ -318,7 +431,23 @@ export class KbIndex {
     }
   }
 
-  private fetchNotes(noteIds: string[], rankedIds: string[]): SearchResultItem[] {
+  private getExcerpts(noteIds: string[]): Map<string, string> {
+    if (noteIds.length === 0) return new Map();
+    const placeholders = noteIds.map(() => '?').join(',');
+    const rows = this.db
+      .prepare(
+        `SELECT note_id, SUBSTR(body, 1, 200) as excerpt
+         FROM notes_fts WHERE note_id IN (${placeholders})`,
+      )
+      .all(...noteIds) as Array<{ note_id: string; excerpt: string }>;
+    return new Map(rows.map((r) => [r.note_id, r.excerpt ?? '']));
+  }
+
+  private fetchNotes(
+    noteIds: string[],
+    rankedIds: string[],
+    excerpts: Map<string, string>,
+  ): SearchResultItem[] {
     return noteIds
       .map((id) => {
         const row = this.db
@@ -332,13 +461,14 @@ export class KbIndex {
           author: row.author,
           status: row.status,
           score: 1 / (1 + rankedIds.indexOf(id)),
+          excerpt: excerpts.get(id) ?? '',
         };
       })
       .filter((r): r is SearchResultItem => r !== null);
   }
 }
 
-// --- helpers ---
+// ── module-level helpers ──────────────────────────────────────────────────────
 
 function buildFtsQuery(query: string): string {
   const tokens = query.trim().split(/\s+/).filter(Boolean);

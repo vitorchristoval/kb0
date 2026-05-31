@@ -1,8 +1,14 @@
 import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { type GitAdapter } from '../git/GitAdapter.js';
+import { KbConflictError, KbNotFoundError } from '../errors.js';
+import type { KbIndex } from '../index/KbIndex.js';
 import { type Frontmatter, buildFrontmatter, parseNote, serializeNote } from '../schema/frontmatter.js';
+import type { KbWatcher } from '../watcher/KbWatcher.js';
+import { GitAdapter } from '../git/GitAdapter.js';
+
+// Re-export so existing imports from './KbStore' keep working.
+export { KbError, KbConflictError, KbNotFoundError } from '../errors.js';
 
 export interface WriteOptions {
   title: string;
@@ -16,6 +22,7 @@ export interface UpdateOptions {
   content: string;
   expectedHash: string;
   author: string;
+  title?: string;
   status?: Frontmatter['status'];
   tags?: string[];
 }
@@ -27,29 +34,23 @@ export interface NoteWithHash {
   hash: string;
 }
 
-export class KbNotFoundError extends Error {
-  constructor(public readonly notePath: string) {
-    super(`Note not found: ${notePath}`);
-    this.name = 'KbNotFoundError';
-  }
-}
-
-export class KbConflictError extends Error {
-  constructor(
-    public readonly notePath: string,
-    public readonly expected: string,
-    public readonly actual: string,
-  ) {
-    super(`Conflict on ${notePath}: expected hash ${expected}, got ${actual}`);
-    this.name = 'KbConflictError';
-  }
+interface Deps {
+  index?: KbIndex;
+  watcher?: KbWatcher;
 }
 
 export class KbStore {
+  private readonly index?: KbIndex;
+  private readonly watcher?: KbWatcher;
+
   constructor(
     private readonly vaultDir: string,
     private readonly git: GitAdapter,
-  ) {}
+    deps?: Deps,
+  ) {
+    this.index = deps?.index;
+    this.watcher = deps?.watcher;
+  }
 
   async read(notePath: string): Promise<NoteWithHash> {
     const abs = this.resolve(notePath);
@@ -63,7 +64,7 @@ export class KbStore {
     return { ...note, hash: contentHash(raw) };
   }
 
-  async write(notePath: string, opts: WriteOptions): Promise<string> {
+  async write(notePath: string, opts: WriteOptions): Promise<{ hash: string; id: string }> {
     const abs = this.resolve(notePath);
     await fs.mkdir(path.dirname(abs), { recursive: true });
 
@@ -78,9 +79,13 @@ export class KbStore {
     });
 
     const raw = serializeNote(opts.content, frontmatter);
+
+    this.watcher?.ignoreFor(notePath, 1000);
     await fs.writeFile(abs, raw, 'utf-8');
     await this.git.addAndCommit(notePath, `feat: add ${notePath}`);
-    return contentHash(raw);
+    await this.index?.indexNote(notePath);
+
+    return { hash: contentHash(raw), id: frontmatter.id };
   }
 
   async update(notePath: string, opts: UpdateOptions): Promise<string> {
@@ -100,6 +105,7 @@ export class KbStore {
     const parsed = parseNote(existing);
     const frontmatter = buildFrontmatter({
       ...parsed.frontmatter,
+      title: opts.title ?? parsed.frontmatter.title,
       author: opts.author,
       status: opts.status ?? parsed.frontmatter.status,
       tags: opts.tags ?? parsed.frontmatter.tags,
@@ -107,19 +113,25 @@ export class KbStore {
     });
 
     const raw = serializeNote(opts.content, frontmatter);
+
+    this.watcher?.ignoreFor(notePath, 1000);
     await fs.writeFile(abs, raw, 'utf-8');
     await this.git.addAndCommit(notePath, `feat: update ${notePath}`);
+    await this.index?.indexNote(notePath);
+
     return contentHash(raw);
   }
 
   async delete(notePath: string): Promise<void> {
     const abs = this.resolve(notePath);
     try {
+      this.watcher?.ignoreFor(notePath, 1000);
       await fs.unlink(abs);
     } catch {
       throw new KbNotFoundError(notePath);
     }
     await this.git.removeAndCommit(notePath, `feat: delete ${notePath}`);
+    this.index?.deleteNote(notePath);
   }
 
   private resolve(notePath: string): string {
