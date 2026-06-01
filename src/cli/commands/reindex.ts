@@ -1,7 +1,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { resolveEmbedding } from '../../embedding/resolveEmbedding.js';
+import { GitAdapter } from '../../git/GitAdapter.js';
 import { KbIndex } from '../../index/KbIndex.js';
+import { KbStore } from '../../store/KbStore.js';
 
 async function collectMarkdownFiles(vaultDir: string): Promise<string[]> {
   const entries = (await fs.readdir(vaultDir, { recursive: true })) as string[];
@@ -21,6 +23,9 @@ export async function reindexVault(options: { rebuild?: boolean }): Promise<void
   }
 
   const index = new KbIndex({ dbPath, vaultDir, embedding });
+  // git is unused here (ingest does not commit) but KbStore requires it.
+  const git = new GitAdapter({ dir: vaultDir, authorName: 'kb0', authorEmail: 'kb0@localhost' });
+  const store = new KbStore(vaultDir, git, { index });
 
   const allFiles = await collectMarkdownFiles(vaultDir);
 
@@ -42,7 +47,7 @@ export async function reindexVault(options: { rebuild?: boolean }): Promise<void
   for (let i = 0; i < total; i++) {
     process.stdout.write(`\rIndexed ${i}/${total} notes...`);
     try {
-      await index.indexNote(toIndex[i]);
+      await store.ingest(toIndex[i]);
     } catch (err) {
       process.stderr.write(`\n[kb0] failed to index ${toIndex[i]}: ${err}\n`);
     }

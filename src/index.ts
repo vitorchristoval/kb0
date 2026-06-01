@@ -7,8 +7,14 @@ export type { WriteOptions, UpdateOptions, NoteWithHash } from './store/KbStore.
 export { GitAdapter } from './git/GitAdapter.js';
 export type { GitConfig, CommitSummary } from './git/GitAdapter.js';
 
-export { parseNote, serializeNote, buildFrontmatter, FrontmatterSchema } from './schema/frontmatter.js';
-export type { Frontmatter, Note } from './schema/frontmatter.js';
+export {
+  parseNote,
+  serializeNote,
+  buildFrontmatter,
+  normalizeFrontmatter,
+  FrontmatterSchema,
+} from './schema/frontmatter.js';
+export type { Frontmatter, Note, NormalizeOptions } from './schema/frontmatter.js';
 
 export { KbIndex } from './index/KbIndex.js';
 export type {

@@ -62,6 +62,23 @@ export async function serveVault(options: ServeOptions): Promise<void> {
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
 
+  // Reindex incrementally when files change outside kb0 (editor, git pull, etc.).
+  // The watcher suppresses kb0's own writes via ignoreFor, so this only fires for
+  // genuinely external edits.
+  watcher.on('change', (relPath) => {
+    store.ingest(relPath).catch((e: unknown) => {
+      logger.log('error', 'watch.ingest_failed', { path: relPath, error: String(e) });
+    });
+  });
+  watcher.on('delete', (relPath) => {
+    try {
+      index.deleteNote(relPath);
+      logger.log('info', 'watch.deleted', { path: relPath });
+    } catch (e) {
+      logger.log('error', 'watch.delete_failed', { path: relPath, error: String(e) });
+    }
+  });
+
   logger.log('info', 'server.start', {
     agent: agentName,
     vault: vaultDir,

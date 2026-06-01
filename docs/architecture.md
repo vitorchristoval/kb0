@@ -22,7 +22,9 @@ The git layer uses `isomorphic-git` so there's no system git dependency, and it 
 
 The index (SQLite + FTS5 + sqlite-vec) is fully rebuildable from the markdown files. If the index gets corrupted, `kb0 reindex --rebuild` reconstructs it. The user is never locked into kb0's format.
 
-This also means the vault is human-readable and human-editable. You can open the folder in Obsidian, edit a note in VS Code, and the agent sees the changes on next search — the file watcher picks it up and reindexes incrementally.
+This also means the vault is human-readable and human-editable. You can open the folder in Obsidian, edit a note in VS Code, and the agent sees the changes on next search — the file watcher picks it up and reindexes incrementally while `kb0 serve` is running.
+
+You can even drop a plain markdown file into the vault with no frontmatter at all. kb0 stamps it on ingest: `author: human`, a stable generated id, a title taken from the first `# heading` (or the filename), and timestamps from the file's mtime. The stamp is written back to disk so the id stays stable, but it is not auto-committed — external files belong to your own git workflow. This is what makes "markdown is the source of truth" literally true: you are never required to go through an agent to add knowledge.
 
 ### Provenance in frontmatter, always
 

@@ -3,7 +3,13 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { KbConflictError, KbNotFoundError } from '../errors.js';
 import type { KbIndex } from '../index/KbIndex.js';
-import { type Frontmatter, buildFrontmatter, parseNote, serializeNote } from '../schema/frontmatter.js';
+import {
+  type Frontmatter,
+  buildFrontmatter,
+  normalizeFrontmatter,
+  parseNote,
+  serializeNote,
+} from '../schema/frontmatter.js';
 import type { KbWatcher } from '../watcher/KbWatcher.js';
 import { GitAdapter } from '../git/GitAdapter.js';
 
@@ -132,6 +138,41 @@ export class KbStore {
     }
     await this.git.removeAndCommit(notePath, `feat: delete ${notePath}`);
     this.index?.deleteNote(notePath);
+  }
+
+  /**
+   * Brings an externally-created or edited markdown file into kb0.
+   *
+   * If the file lacks complete frontmatter (e.g. a plain .md a human dropped in
+   * or edited in Obsidian/VS Code), it is stamped with `author: human`, a stable
+   * generated id, and timestamps — then indexed. Files that already have valid
+   * frontmatter are indexed unchanged.
+   *
+   * The stamp is written to disk (so the id is stable across reindexes) but is
+   * NOT auto-committed: external files belong to the user's own git workflow.
+   * The `author: human` field is the provenance record.
+   */
+  async ingest(notePath: string): Promise<void> {
+    const abs = this.resolve(notePath);
+    let raw: string;
+    let mtimeIso: string;
+    try {
+      raw = await fs.readFile(abs, 'utf-8');
+      const stat = await fs.stat(abs);
+      mtimeIso = stat.mtime.toISOString();
+    } catch {
+      throw new KbNotFoundError(notePath);
+    }
+
+    const fallbackTitle = path.basename(notePath, path.extname(notePath));
+    const { raw: stamped, wasModified } = normalizeFrontmatter(raw, { mtimeIso, fallbackTitle });
+
+    if (wasModified) {
+      this.watcher?.ignoreFor(notePath, 1000);
+      await fs.writeFile(abs, stamped, 'utf-8');
+    }
+
+    await this.index?.indexNote(notePath);
   }
 
   private resolve(notePath: string): string {

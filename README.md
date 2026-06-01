@@ -130,6 +130,20 @@ Note content here. Supports [[wikilinks]] and #tags.
 
 Unknown fields pass through unchanged (extensibility).
 
+### Adding notes by hand
+
+You don't have to go through an agent. Drop a plain markdown file into the vault — even with no frontmatter — and kb0 stamps it on the next `kb0 reindex` (or live, while `kb0 serve` is running):
+
+```bash
+echo "# My Idea
+
+Written straight in my editor." > my-vault/notes/idea.md
+
+kb0 reindex
+```
+
+kb0 fills in `author: human`, a stable id, a title from the first `# heading` (or the filename), and timestamps from the file. Files you wrote keep their `human` provenance; agent writes are tagged `agent:<name>`. The stamp is written to disk but not auto-committed — your manual files stay in your own git workflow.
+
 ---
 
 ## ACL policy
