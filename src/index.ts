@@ -25,6 +25,9 @@ export type {
 export type { EmbeddingProvider } from './embedding/EmbeddingProvider.js';
 export { FakeEmbeddingProvider } from './embedding/FakeEmbeddingProvider.js';
 export { OpenAIEmbeddingProvider } from './embedding/OpenAIEmbeddingProvider.js';
+export type { OpenAIEmbeddingConfig } from './embedding/OpenAIEmbeddingProvider.js';
+export { resolveEmbedding } from './embedding/resolveEmbedding.js';
+export type { ResolvedEmbedding } from './embedding/resolveEmbedding.js';
 
 export { parseLinks } from './parser/noteLinks.js';
 export type { ParsedLinks } from './parser/noteLinks.js';

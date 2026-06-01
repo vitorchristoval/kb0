@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { OpenAIEmbeddingProvider } from '../../embedding/OpenAIEmbeddingProvider.js';
+import { resolveEmbedding } from '../../embedding/resolveEmbedding.js';
 import { KbIndex } from '../../index/KbIndex.js';
 
 async function collectMarkdownFiles(vaultDir: string): Promise<string[]> {
@@ -14,12 +14,12 @@ export async function reindexVault(options: { rebuild?: boolean }): Promise<void
   const vaultDir = process.cwd();
   const dbPath = path.join(vaultDir, '.vault-index', 'index.db');
 
-  if (!process.env['OPENAI_API_KEY']) {
-    console.error('Error: OPENAI_API_KEY environment variable is required.');
-    process.exit(1);
+  const { provider: embedding, mode, summary } = resolveEmbedding();
+  console.log(`Embeddings: ${summary}`);
+  if (mode === 'fake') {
+    console.log('Building keyword index only. Set OPENAI_API_KEY for semantic search.');
   }
 
-  const embedding = new OpenAIEmbeddingProvider();
   const index = new KbIndex({ dbPath, vaultDir, embedding });
 
   const allFiles = await collectMarkdownFiles(vaultDir);

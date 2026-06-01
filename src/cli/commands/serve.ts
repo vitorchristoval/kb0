@@ -1,6 +1,5 @@
 import path from 'node:path';
-import { FakeEmbeddingProvider } from '../../embedding/FakeEmbeddingProvider.js';
-import { OpenAIEmbeddingProvider } from '../../embedding/OpenAIEmbeddingProvider.js';
+import { resolveEmbedding } from '../../embedding/resolveEmbedding.js';
 import { GitAdapter } from '../../git/GitAdapter.js';
 import { KbIndex } from '../../index/KbIndex.js';
 import { FileLogger } from '../../logger/FileLogger.js';
@@ -30,9 +29,8 @@ export async function serveVault(options: ServeOptions): Promise<void> {
   const dbPath = path.join(vaultDir, '.vault-index', 'index.db');
   const logFile = path.join(vaultDir, '.vault-index', 'kb0.log');
 
-  const embedding = process.env['OPENAI_API_KEY']
-    ? new OpenAIEmbeddingProvider()
-    : new FakeEmbeddingProvider();
+  const { provider: embedding, summary: embeddingSummary } = resolveEmbedding();
+  process.stderr.write(`[kb0] embeddings: ${embeddingSummary}\n`);
 
   const git = new GitAdapter({
     dir: vaultDir,
@@ -68,6 +66,7 @@ export async function serveVault(options: ServeOptions): Promise<void> {
     agent: agentName,
     vault: vaultDir,
     policy_mode: policy.mode,
+    embedding: embeddingSummary,
   });
 
   await watcher.start(vaultDir);

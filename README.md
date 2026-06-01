@@ -160,15 +160,54 @@ kb0 serve --agent my-agent --strict
 
 ---
 
-## Search
+## Configuration
 
-kb0 uses hybrid search by default — combines BM25 keyword ranking (FTS5) with semantic similarity (OpenAI `text-embedding-3-small`) via Reciprocal Rank Fusion.
+kb0 runs **entirely on your machine** — it's not a hosted service. The vault is a local folder, and the npm package is the server. There's no account to create and nothing to connect to.
+
+### Git — zero config
+
+kb0 uses an embedded git implementation ([isomorphic-git](https://isomorphic-git.org)), so **you don't need git installed** and it **doesn't touch your personal `~/.gitconfig`**. Every write is committed under the agent's own identity for provenance:
+
+```
+kb0 init    → author: kb0 <kb0@localhost>
+kb0 serve   → author: agent:<name> <name@kb0.local>
+```
+
+You never configure git. It just works.
+
+### Embeddings — one optional env var
+
+Semantic search needs an embedding provider. Without one, kb0 falls back to **keyword-only search** (everything else works normally).
+
+| Env var | Default | Purpose |
+|---|---|---|
+| `OPENAI_API_KEY` | — | Enables semantic search. Absent = keyword-only. |
+| `KB0_EMBEDDING_MODEL` | `text-embedding-3-small` | Any OpenAI embedding model. |
+| `KB0_EMBEDDING_DIMENSIONS` | per-model (1536 / 3072) | Override vector size. |
+| `KB0_OPENAI_BASE_URL` | OpenAI | Point at a compatible endpoint (Azure, LiteLLM, Ollama). |
 
 ```bash
-# Set API key for semantic search (optional — falls back to keyword-only without it)
+# Default — OpenAI text-embedding-3-small
 export OPENAI_API_KEY=sk-...
 
-# Reindex existing notes
+# Larger model
+export KB0_EMBEDDING_MODEL=text-embedding-3-large
+
+# Local Ollama (OpenAI-compatible)
+export OPENAI_API_KEY=ollama
+export KB0_OPENAI_BASE_URL=http://localhost:11434/v1
+export KB0_EMBEDDING_MODEL=nomic-embed-text
+export KB0_EMBEDDING_DIMENSIONS=768
+```
+
+Changing the model is safe: kb0 tracks the model and dimensions per embedding, detects the mismatch on next boot, and re-embeds stale notes in the background.
+
+## Search
+
+kb0 uses hybrid search by default — combines BM25 keyword ranking (FTS5) with semantic similarity via Reciprocal Rank Fusion.
+
+```bash
+# Reindex existing notes (incremental)
 kb0 reindex
 
 # Full rebuild

@@ -17,7 +17,8 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "prepublishOnly": "npm run typecheck && npm run test:run && npm run build",
+    "smoke": "node scripts/smoke.mjs",
+    "prepublishOnly": "npm run typecheck && npm run test:run && npm run build && npm run smoke",
     "dev": "tsx src/cli/index.ts",
     "test": "vitest",
     "test:run": "vitest run",
