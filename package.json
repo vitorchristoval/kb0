@@ -16,7 +16,8 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run typecheck && npm run test:run && npm run build",
     "dev": "tsx src/cli/index.ts",
     "test": "vitest",
     "test:run": "vitest run",
