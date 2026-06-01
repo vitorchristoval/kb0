@@ -13,9 +13,8 @@ Author, ID, created, and updated are always set by the server from your agent id
   inputSchema: WriteInput,
 
   handler: async (input, ctx) => {
-    ctx.log('info', 'vault.write', { path: input.path });
+    ctx.policy.check(ctx.agentIdentity, 'write', input.path);
 
-    // Reject writes to paths that already exist — agent should use vault.update.
     try {
       await ctx.store.read(input.path);
       throw new KbError('VALIDATION', {
@@ -38,7 +37,6 @@ Author, ID, created, and updated are always set by the server from your agent id
       tags: input.tags,
     });
 
-    ctx.log('info', 'vault.write.done', { path: input.path, id });
     const output: WriteOutput = { path: input.path, hash, id };
     return output;
   },

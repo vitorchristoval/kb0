@@ -12,13 +12,14 @@ Do not use this when you already know the exact path; use vault.read directly.`,
   inputSchema: SearchInput,
 
   handler: async (input, ctx) => {
-    ctx.log('info', 'vault.search', { query: input.query, mode: input.mode });
+    const allowedGlobs = ctx.policy.getAllowedReadGlobs(ctx.agentIdentity);
 
     const result = await ctx.index.search(input.query, {
       mode: input.mode,
       ranking: input.ranking,
       limit: input.limit,
       alpha: 0.6,
+      allowedGlobs,
     });
 
     const output: SearchOutput = {

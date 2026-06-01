@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { minimatch } from 'minimatch';
 import type { EmbeddingProvider } from '../embedding/EmbeddingProvider.js';
 import { parseLinks } from '../parser/noteLinks.js';
 import { parseNote } from '../schema/frontmatter.js';
@@ -16,6 +17,8 @@ export interface SearchOptions {
   /** Weight for semantic score in 'weighted' mode. Default: 0.6 */
   alpha?: number;
   limit?: number;
+  /** Glob patterns the caller is allowed to read. undefined = no filter. [] = deny all. */
+  allowedGlobs?: string[];
 }
 
 export interface SearchResultItem {
@@ -38,6 +41,8 @@ export interface ListFilters {
   tag?: string;
   status?: string;
   limit?: number;
+  /** Glob patterns the caller is allowed to read. undefined = no filter. [] = deny all. */
+  allowedGlobs?: string[];
 }
 
 export interface ListRow {
@@ -270,14 +275,17 @@ export class KbIndex {
       rankedIds = weightedFusion(kwIds, semItems, alpha, limit * 2);
     }
 
-    const results = this.fetchNotes(rankedIds.slice(0, limit), rankedIds, excerpts);
+    let results = this.fetchNotes(rankedIds.slice(0, limit), rankedIds, excerpts);
+    if (opts.allowedGlobs !== undefined) {
+      results = results.filter((r) => pathMatchesGlobs(r.path, opts.allowedGlobs!));
+    }
     return { results, warnings };
   }
 
   // ── query methods ────────────────────────────────────────────────────────────
 
   list(filters: ListFilters = {}): ListRow[] {
-    const { prefix, tag, status, limit = 50 } = filters;
+    const { prefix, tag, status, limit = 50, allowedGlobs } = filters;
     const conditions: string[] = [];
     const params: unknown[] = [];
 
@@ -301,12 +309,16 @@ export class KbIndex {
     params.push(limit);
 
     const rows = this.db.prepare(sql).all(...params) as NoteRow[];
-    return rows.map((row) => {
+    let results = rows.map((row) => {
       const tags = (
         this.db.prepare('SELECT tag FROM tags WHERE note_id = ?').all(row.id) as { tag: string }[]
       ).map((r) => r.tag);
       return { id: row.id, path: row.path, title: row.title, author: row.author, status: row.status, tags };
     });
+    if (allowedGlobs !== undefined) {
+      results = results.filter((r) => pathMatchesGlobs(r.path, allowedGlobs));
+    }
+    return results;
   }
 
   backlinks(notePath: string): LinkRow[] {
@@ -333,13 +345,27 @@ export class KbIndex {
       .all(notePath) as LinkRow[];
   }
 
-  recent(limit: number): RecentRow[] {
-    return this.db
+  recent(limit: number, allowedGlobs?: string[]): RecentRow[] {
+    const rows = this.db
       .prepare(
         `SELECT id, path, title, author, status, updated_at
          FROM notes ORDER BY updated_at DESC LIMIT ?`,
       )
       .all(limit) as RecentRow[];
+    if (allowedGlobs !== undefined) {
+      return rows.filter((r) => pathMatchesGlobs(r.path, allowedGlobs));
+    }
+    return rows;
+  }
+
+  /** Total number of indexed notes. */
+  getNoteCount(): number {
+    return (this.db.prepare('SELECT COUNT(*) as n FROM notes').get() as { n: number }).n;
+  }
+
+  /** The model name used for embeddings. */
+  get embeddingModel(): string {
+    return this.embedding.model;
   }
 
   // ── reindex helpers ──────────────────────────────────────────────────────────
@@ -469,6 +495,12 @@ export class KbIndex {
 }
 
 // ── module-level helpers ──────────────────────────────────────────────────────
+
+/** undefined = allow all. [] = deny all. Otherwise check against each glob. */
+function pathMatchesGlobs(notePath: string, globs: string[]): boolean {
+  if (globs.length === 0) return false;
+  return globs.some((g) => minimatch(notePath, g, { dot: true }));
+}
 
 function buildFtsQuery(query: string): string {
   const tokens = query.trim().split(/\s+/).filter(Boolean);

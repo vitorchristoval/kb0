@@ -12,13 +12,14 @@ Do not use this to retrieve note content — use vault.read for that.`,
   inputSchema: ListInput,
 
   handler: async (input, ctx) => {
-    ctx.log('info', 'vault.list', { prefix: input.prefix, tag: input.tag, status: input.status });
+    const allowedGlobs = ctx.policy.getAllowedReadGlobs(ctx.agentIdentity);
 
     const rows = ctx.index.list({
       prefix: input.prefix,
       tag: input.tag,
       status: input.status,
       limit: input.limit,
+      allowedGlobs,
     });
 
     const output: ListOutput = {

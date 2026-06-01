@@ -12,7 +12,7 @@ Do not use this to create new notes; use vault.write instead.`,
   inputSchema: UpdateInput,
 
   handler: async (input, ctx) => {
-    ctx.log('info', 'vault.update', { path: input.path });
+    ctx.policy.check(ctx.agentIdentity, 'update', input.path);
 
     const hash = await ctx.store.update(input.path, {
       content: input.content,
@@ -23,7 +23,6 @@ Do not use this to create new notes; use vault.write instead.`,
       tags: input.tags,
     });
 
-    ctx.log('info', 'vault.update.done', { path: input.path });
     const output: UpdateOutput = { path: input.path, hash };
     return output;
   },

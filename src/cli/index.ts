@@ -3,6 +3,7 @@ import { Command } from 'commander';
 import { initVault } from './commands/init.js';
 import { reindexVault } from './commands/reindex.js';
 import { serveVault } from './commands/serve.js';
+import { statusCmd } from './commands/status-cmd.js';
 
 const program = new Command();
 
@@ -21,6 +22,13 @@ program
   .description('Start the MCP server for a vault')
   .option('--vault <path>', 'vault directory (default: cwd)')
   .option('--agent <name>', 'agent identity for provenance (required)')
+  .option('--strict', 'fail if .vault-policy.yaml is absent', false)
   .action(serveVault);
+
+program
+  .command('status')
+  .description('Show vault status and index health')
+  .option('--vault <path>', 'vault directory (default: cwd)')
+  .action(statusCmd);
 
 program.parse();

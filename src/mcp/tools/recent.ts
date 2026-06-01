@@ -12,8 +12,8 @@ For full-text or semantic search, use vault.search instead.`,
   inputSchema: RecentInput,
 
   handler: async (input, ctx) => {
-    ctx.log('info', 'vault.recent', { limit: input.limit });
-    const rows = ctx.index.recent(input.limit);
+    const allowedGlobs = ctx.policy.getAllowedReadGlobs(ctx.agentIdentity);
+    const rows = ctx.index.recent(input.limit, allowedGlobs);
     const output: RecentOutput = {
       notes: rows.map((r) => ({
         path: r.path,

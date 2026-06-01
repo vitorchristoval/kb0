@@ -1,6 +1,10 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import path from 'node:path';
 import type { KbIndex } from '../index/KbIndex.js';
+import type { Logger } from '../logger/Logger.js';
+import { NullLogger } from '../logger/NullLogger.js';
+import type { KbPolicy } from '../policy/KbPolicy.js';
 import type { KbStore } from '../store/KbStore.js';
 import type { KbWatcher } from '../watcher/KbWatcher.js';
 import type { ToolContext } from './tool-base.js';
@@ -9,8 +13,11 @@ import { ALL_TOOLS } from './tools/index.js';
 export interface KbMcpServerConfig {
   store: KbStore;
   index: KbIndex;
+  policy: KbPolicy;
   watcher?: KbWatcher;
   agentIdentity: string;
+  vaultDir: string;
+  logger?: Logger;
 }
 
 export class KbMcpServer {
@@ -22,11 +29,18 @@ export class KbMcpServer {
     this.config = config;
     this.server = new McpServer({ name: 'kb0', version: '0.1.0' });
 
+    const logger = config.logger ?? new NullLogger();
+    const logFile = path.join(config.vaultDir, '.vault-index', 'kb0.log');
+
     const ctx: ToolContext = {
       store: config.store,
       index: config.index,
+      policy: config.policy,
       agentIdentity: config.agentIdentity,
-      log: () => {}, // Sprint 4: wire to telemetry
+      vaultDir: config.vaultDir,
+      logFile,
+      logger,
+      log: (level, event, fields) => logger.log(level, event, fields),
     };
 
     for (const tool of ALL_TOOLS) {

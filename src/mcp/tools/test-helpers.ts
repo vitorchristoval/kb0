@@ -5,6 +5,8 @@ import { vi } from 'vitest';
 import { FakeEmbeddingProvider } from '../../embedding/FakeEmbeddingProvider.js';
 import { GitAdapter } from '../../git/GitAdapter.js';
 import { KbIndex } from '../../index/KbIndex.js';
+import { NullLogger } from '../../logger/NullLogger.js';
+import { KbPolicy } from '../../policy/KbPolicy.js';
 import { buildFrontmatter, serializeNote } from '../../schema/frontmatter.js';
 import { KbStore } from '../../store/KbStore.js';
 import { FakeWatcher } from '../../watcher/FakeWatcher.js';
@@ -31,16 +33,23 @@ export interface TestCtx {
 export async function createTestContext(): Promise<TestCtx> {
   const tmpDir = await mkdtemp(join(tmpdir(), 'kb0-mcp-'));
   const dbPath = join(tmpDir, '.vault-index', 'index.db');
+  const logFile = join(tmpDir, '.vault-index', 'kb0.log');
   const embedding = new FakeEmbeddingProvider(8);
   const git = mockGit();
   const watcher = new FakeWatcher();
   const index = new KbIndex({ dbPath, vaultDir: tmpDir, embedding });
   const store = new KbStore(tmpDir, git, { index, watcher });
+  const policy = KbPolicy.allowAll();
+  const logger = new NullLogger();
 
   const ctx: ToolContext = {
     store,
     index,
+    policy,
     agentIdentity: 'test-agent',
+    vaultDir: tmpDir,
+    logFile,
+    logger,
     log: () => {},
   };
 

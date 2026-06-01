@@ -12,7 +12,7 @@ For incoming links (what links to this note), use vault.backlinks instead.`,
   inputSchema: LinksInput,
 
   handler: async (input, ctx) => {
-    ctx.log('info', 'vault.links', { path: input.path });
+    ctx.policy.check(ctx.agentIdentity, 'read', input.path);
     const links = ctx.index.links(input.path);
     const output: LinksOutput = { path: input.path, links };
     return output;
@@ -20,9 +20,7 @@ For incoming links (what links to this note), use vault.backlinks instead.`,
 
   format: (out) => {
     if (out.links.length === 0) return `\`${out.path}\` has no outgoing links.`;
-    const items = out.links
-      .map((l) => `- **${l.title}** (\`${l.path}\`)`)
-      .join('\n');
+    const items = out.links.map((l) => `- **${l.title}** (\`${l.path}\`)`).join('\n');
     return `## Links from \`${out.path}\` (${out.links.length})\n\n${items}`;
   },
 });

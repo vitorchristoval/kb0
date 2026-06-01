@@ -3,14 +3,20 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { type ZodObject, type ZodRawShape, z } from 'zod';
 import { KbError } from '../errors.js';
 import type { KbIndex } from '../index/KbIndex.js';
+import type { Logger } from '../logger/Logger.js';
+import type { KbPolicy } from '../policy/KbPolicy.js';
 import type { KbStore } from '../store/KbStore.js';
 import { formatKbError } from './errors.js';
 
 export interface ToolContext {
   readonly store: KbStore;
   readonly index: KbIndex;
+  readonly policy: KbPolicy;
   readonly agentIdentity: string;
-  /** No-op in Sprint 3 — wired to telemetry in Sprint 4. */
+  readonly vaultDir: string;
+  readonly logFile: string;
+  readonly logger: Logger;
+  /** Convenience alias — delegates to logger.log. */
   log(level: 'info' | 'warn' | 'error', event: string, fields?: Record<string, unknown>): void;
 }
 
@@ -19,9 +25,7 @@ export interface Tool {
   register(server: McpServer, ctx: ToolContext): void;
 }
 
-// Cast helpers — structuredContent's index signature makes TypeScript unable to
-// unify with CallToolResult via inference; a single typed escape hatch here is
-// cleaner than scattering 'as any' across 9 tool files.
+// Cast helpers — see tool-base.ts comment in Sprint 3 for why these exist.
 function ok(text: string, structured: unknown): CallToolResult {
   return {
     content: [{ type: 'text', text }],
@@ -62,12 +66,33 @@ export function defineTool<Shape extends ZodRawShape, O>(config: {
         config.description,
         config.inputSchema.shape,
         async (args: z.infer<ZodObject<Shape>>) => {
+          const start = Date.now();
           try {
             const output = await config.handler(args, ctx);
+            ctx.log('info', 'tool.success', {
+              tool: config.name,
+              agent: ctx.agentIdentity,
+              duration_ms: Date.now() - start,
+            });
             return ok(config.format(output), output);
           } catch (e) {
-            if (e instanceof KbError) return err(formatKbError(e));
-            throw e; // unexpected — let MCP SDK handle
+            const duration_ms = Date.now() - start;
+            if (e instanceof KbError) {
+              ctx.log('error', 'tool.error', {
+                tool: config.name,
+                agent: ctx.agentIdentity,
+                duration_ms,
+                error_code: e.code,
+              });
+              return err(formatKbError(e));
+            }
+            ctx.log('error', 'tool.unexpected', {
+              tool: config.name,
+              agent: ctx.agentIdentity,
+              duration_ms,
+              error: String(e),
+            });
+            throw e;
           }
         },
       );

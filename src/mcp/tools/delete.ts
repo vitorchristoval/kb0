@@ -12,9 +12,8 @@ Prefer vault.update with status "canonical" to promote a note, rather than delet
   inputSchema: DeleteInput,
 
   handler: async (input, ctx) => {
-    ctx.log('info', 'vault.delete', { path: input.path });
+    ctx.policy.check(ctx.agentIdentity, 'delete', input.path);
     await ctx.store.delete(input.path);
-    ctx.log('info', 'vault.delete.done', { path: input.path });
     const output: DeleteOutput = { path: input.path };
     return output;
   },

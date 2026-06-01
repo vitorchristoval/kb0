@@ -6,6 +6,7 @@ import { listTool } from './list.js';
 import { readTool } from './read.js';
 import { recentTool } from './recent.js';
 import { searchTool } from './search.js';
+import { statusTool } from './status.js';
 import { updateTool } from './update.js';
 import { writeTool } from './write.js';
 
@@ -19,4 +20,5 @@ export const ALL_TOOLS: Tool[] = [
   backlinksTool,
   linksTool,
   recentTool,
+  statusTool,
 ];

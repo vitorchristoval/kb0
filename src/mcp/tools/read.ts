@@ -12,7 +12,7 @@ Do not use this for searching; use vault.search or vault.list to discover notes 
   inputSchema: ReadInput,
 
   handler: async (input, ctx) => {
-    ctx.log('info', 'vault.read', { path: input.path });
+    ctx.policy.check(ctx.agentIdentity, 'read', input.path);
     const note = await ctx.store.read(input.path);
     const output: ReadOutput = {
       path: input.path,
