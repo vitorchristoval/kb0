@@ -9,7 +9,7 @@
 ## Step 1 — Install and create a vault
 
 ```bash
-npm install -g kb0
+npm install -g kb0-mcp
 kb0 init my-vault
 cd my-vault
 ```

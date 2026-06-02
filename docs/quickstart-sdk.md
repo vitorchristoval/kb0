@@ -5,18 +5,18 @@ kb0 uses the MCP protocol over stdio. Any MCP client can connect — the agent p
 ## Prerequisites
 
 ```bash
-npm install -g kb0
+npm install -g kb0-mcp
 kb0 init my-vault
 ```
 
 ---
 
-## Python — the easy way (`pip install kb0`)
+## Python — the easy way (`pip install kb0-mcp`)
 
 If you're in Python, skip the raw MCP boilerplate. The [`kb0` Python client](https://github.com/vitorchristoval/kb0-python) gives you a native async `VaultClient`:
 
 ```bash
-pip install kb0      # the client (still needs the kb0 binary from npm above)
+pip install kb0-mcp  # the client (still needs the kb0 binary from npm above)
 ```
 
 ```python

@@ -26,7 +26,7 @@ Most AI agents write to flat files, SQLite, or ad-hoc vector stores with no hist
 ## Quickstart
 
 ```bash
-npm install -g kb0
+npm install -g kb0-mcp
 
 kb0 init my-vault
 cd my-vault
@@ -53,7 +53,7 @@ Your vault is now a running MCP server. Connect any agent.
 }
 ```
 
-**Python** — `pip install kb0` for a native async client ([kb0-python](https://github.com/vitorchristoval/kb0-python)). **Anthropic SDK / OpenAI / LangGraph** — see [docs/quickstart-sdk.md](docs/quickstart-sdk.md).
+**Python** — `pip install kb0-mcp` for a native async client ([kb0-python](https://github.com/vitorchristoval/kb0-python)). **Anthropic SDK / OpenAI / LangGraph** — see [docs/quickstart-sdk.md](docs/quickstart-sdk.md).
 
 ---
 
