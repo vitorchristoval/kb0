@@ -187,7 +187,7 @@ kb0 init    → author: kb0 <kb0@localhost>
 kb0 serve   → author: agent:<name> <name@kb0.local>
 ```
 
-You never configure git. It just works.
+You never configure git. It just works. To see the agent's history, undo a change, or push your vault to GitHub, you use plain git — see [Git & history](docs/git-and-history.md).
 
 ### Embeddings — one optional env var
 
@@ -252,6 +252,7 @@ See the guides:
 
 - [Claude Desktop setup](docs/quickstart-claude-desktop.md)
 - [Anthropic SDK / OpenAI / LangGraph](docs/quickstart-sdk.md)
+- [Git & history — versioning, undo, backup, sync](docs/git-and-history.md)
 - [Architecture deep dive](docs/architecture.md)
 
 ---
