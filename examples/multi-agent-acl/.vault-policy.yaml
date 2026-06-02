@@ -1,0 +1,19 @@
+version: 1
+
+# Two agents, two roles.
+#   research-bot drafts into the inbox but cannot touch canonical notes.
+#   curator promotes and curates notes/, but stays out of the inbox.
+# Agents not listed here, with no `default`, are DENIED ALL.
+
+agents:
+  research-bot:
+    read: ["**/*"]
+    write: ["_inbox/**"]
+    update: ["_inbox/**"]
+    delete: []
+
+  curator:
+    read: ["**/*"]
+    write: ["notes/**"]
+    update: ["notes/**"]
+    delete: ["notes/**"]

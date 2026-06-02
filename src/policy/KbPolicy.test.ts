@@ -48,6 +48,25 @@ describe('KbPolicy', () => {
       expect(policy.mode).toBe('enforced');
       expect(policy.policyFileExists).toBe(true);
     });
+
+    it('tolerates an empty agents section (YAML null) without crashing', async () => {
+      // `agents:` with nothing under it parses as null, not {} — must not throw.
+      await writeFile(join(tmpDir, '.vault-policy.yaml'), 'version: 1\nagents:\n', 'utf-8');
+      const policy = KbPolicy.load(tmpDir);
+      expect(policy.mode).toBe('enforced');
+      // no agents, no default → unlisted agent is denied
+      expect(() => policy.check('anyone', 'read', 'x.md')).toThrow();
+    });
+
+    it('loads a file with only a version and a default', async () => {
+      await writeFile(
+        join(tmpDir, '.vault-policy.yaml'),
+        'version: 1\ndefault:\n  read: ["**/*"]\n',
+        'utf-8',
+      );
+      const policy = KbPolicy.load(tmpDir);
+      expect(() => policy.check('anyone', 'read', 'notes/x.md')).not.toThrow();
+    });
   });
 
   describe('check — enforced mode', () => {

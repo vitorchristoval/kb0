@@ -16,9 +16,15 @@ const AgentPolicySchema = z.object({
 
 const PolicyFileSchema = z.object({
   version: z.literal(1),
-  agents:  z.record(z.string(), AgentPolicySchema).default({}),
-  // default is optional — its absence means unlisted agents are DENIED ALL
-  default: AgentPolicySchema.optional(),
+  // An empty YAML section (e.g. `agents:` with only comments under it) parses as
+  // null, not undefined — so .default() alone isn't enough. Coerce null/undefined.
+  agents: z
+    .record(z.string(), AgentPolicySchema)
+    .nullish()
+    .transform((v) => v ?? {}),
+  // default is optional — its absence (or an empty section) means unlisted agents
+  // are DENIED ALL.
+  default: AgentPolicySchema.nullish().transform((v) => v ?? undefined),
 });
 
 type AgentPolicy = z.infer<typeof AgentPolicySchema>;

@@ -1,0 +1,4 @@
+# the vault is created by `kb0 init vault` — don't commit it
+vault/
+.venv/
+__pycache__/
