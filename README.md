@@ -53,7 +53,7 @@ Your vault is now a running MCP server. Connect any agent.
 }
 ```
 
-**Anthropic SDK / OpenAI / LangGraph** — see [docs/quickstart-sdk.md](docs/quickstart-sdk.md).
+**Python** — `pip install kb0` for a native async client ([kb0-python](https://github.com/vitorchristoval/kb0-python)). **Anthropic SDK / OpenAI / LangGraph** — see [docs/quickstart-sdk.md](docs/quickstart-sdk.md).
 
 ---
 

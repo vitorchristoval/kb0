@@ -11,6 +11,33 @@ kb0 init my-vault
 
 ---
 
+## Python — the easy way (`pip install kb0`)
+
+If you're in Python, skip the raw MCP boilerplate. The [`kb0` Python client](https://github.com/vitorchristoval/kb0-python) gives you a native async `VaultClient`:
+
+```bash
+pip install kb0      # the client (still needs the kb0 binary from npm above)
+```
+
+```python
+import asyncio
+from kb0 import VaultClient
+
+async def main():
+    async with VaultClient(vault="./my-vault", agent="my-bot") as kb:
+        await kb.write("notes/idea.md", title="Idea", content="...")
+        hits = await kb.search("auth design")
+        print(hits["results"])
+
+asyncio.run(main())
+```
+
+It manages the `kb0 serve` subprocess and maps failures to typed exceptions
+(`KbConflictError`, `KbACLDeniedError`, …). The raw-MCP examples below are for
+when you want full control or are wiring kb0 into an existing agent framework.
+
+---
+
 ## Anthropic SDK (Node.js)
 
 ```typescript
