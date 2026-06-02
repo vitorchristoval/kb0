@@ -3,6 +3,27 @@
   "version": "0.1.0",
   "description": "The knowledge base layer for AI agents — markdown-first, MCP-native, with permissions and provenance built in.",
   "license": "Apache-2.0",
+  "author": "Vitor Christoval",
+  "homepage": "https://kb0.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vitorchristoval/kb0.git"
+  },
+  "bugs": {
+    "url": "https://github.com/vitorchristoval/kb0/issues"
+  },
+  "keywords": [
+    "mcp",
+    "ai-agents",
+    "knowledge-base",
+    "rag",
+    "markdown",
+    "vault",
+    "embeddings",
+    "sqlite",
+    "git",
+    "model-context-protocol"
+  ],
   "type": "module",
   "engines": {
     "node": ">=20.0.0"
