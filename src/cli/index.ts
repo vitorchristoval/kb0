@@ -4,10 +4,11 @@ import { initVault } from './commands/init.js';
 import { reindexVault } from './commands/reindex.js';
 import { serveVault } from './commands/serve.js';
 import { statusCmd } from './commands/status-cmd.js';
+import { KB0_VERSION } from '../version.js';
 
 const program = new Command();
 
-program.name('kb0').description('The knowledge base layer for AI agents').version('0.1.0');
+program.name('kb0').description('The knowledge base layer for AI agents').version(KB0_VERSION);
 
 program.command('init <name>').description('Initialize a new vault').action(initVault);
 
