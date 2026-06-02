@@ -2,9 +2,9 @@
 
 **The knowledge base layer for AI agents.** Markdown-first, MCP-native, git-backed, with ACL built in.
 
-[![npm](https://img.shields.io/npm/v/kb0?color=22c55e)](https://www.npmjs.com/package/kb0)
+[![npm](https://img.shields.io/npm/v/kb0-mcp?color=22c55e)](https://www.npmjs.com/package/kb0-mcp)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-111%20passing-22c55e)](#)
+[![Tests](https://img.shields.io/badge/tests-139%20passing-22c55e)](#)
 
 ---
 

@@ -59,7 +59,7 @@ npm run lint              # ESLint
 
 ## What's in scope for MVP
 
-Re-read `AGENTS.md` before opening a PR that adds features. The "MVP does NOT include" list is intentional:
+The MVP scope is intentionally narrow. Before opening a PR that adds a feature, check it isn't on this "not included" list — these are deliberate exclusions, not gaps:
 
 - No multi-vault
 - No web dashboard
