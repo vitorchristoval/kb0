@@ -72,3 +72,24 @@ Bug fixes, test coverage, and doc improvements are always welcome.
 ## License
 
 By contributing you agree your changes will be licensed under Apache 2.0.
+
+### Why Apache 2.0 (and not MIT)
+
+Both are permissive licenses — you can use, modify, sell, and build closed-source
+products on top of kb0. The difference that mattered for this project is **patents**.
+
+- **MIT** is silent on patents. It grants copyright permission but says nothing
+  about patent rights, leaving a legal gray area.
+- **Apache 2.0** includes an **explicit patent grant** — every contributor licenses
+  any patents covering their contribution — plus a **patent retaliation clause**:
+  sue someone claiming kb0 infringes your patent and you lose your own patent
+  license. This is what makes companies' legal teams comfortable adopting it.
+
+Other practical differences: Apache 2.0 asks you to note files you've changed,
+preserves a `NOTICE` file for attributions, and explicitly does **not** grant
+trademark rights. It's the de-facto standard for production infrastructure
+(Kubernetes, most CNCF and MCP-ecosystem projects).
+
+kb0 positions itself as a production-grade, enterprise-ready layer, so the patent
+protection and corporate-friendliness of Apache 2.0 were the deciding factors.
+One compatibility note: Apache 2.0 is compatible with GPLv3 but **not** GPLv2.
