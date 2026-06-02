@@ -4,3 +4,5 @@ dist/
 .DS_Store
 *.js.map
 .vault-index/
+AGENTS.md
+ROADMAP.md
