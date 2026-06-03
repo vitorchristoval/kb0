@@ -7,6 +7,7 @@ import { NullLogger } from '../logger/NullLogger.js';
 import type { KbPolicy } from '../policy/KbPolicy.js';
 import type { KbStore } from '../store/KbStore.js';
 import type { KbWatcher } from '../watcher/KbWatcher.js';
+import { KB0_VERSION } from '../version.js';
 import type { ToolContext } from './tool-base.js';
 import { ALL_TOOLS } from './tools/index.js';
 
@@ -27,7 +28,7 @@ export class KbMcpServer {
 
   constructor(config: KbMcpServerConfig) {
     this.config = config;
-    this.server = new McpServer({ name: 'kb0', version: '0.1.0' });
+    this.server = new McpServer({ name: 'kb0', version: KB0_VERSION });
 
     const logger = config.logger ?? new NullLogger();
     const logFile = path.join(config.vaultDir, '.vault-index', 'kb0.log');
