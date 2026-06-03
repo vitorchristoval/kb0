@@ -259,6 +259,8 @@ kb0 status                   Vault health and index stats
 
 ## Integrate with your agent
 
+**Using an AI coding agent (Claude Code, Cursor)?** kb0 ships a [Claude Code skill](.claude/skills/kb0/SKILL.md) that teaches your agent to install kb0 and use a vault correctly — copy `.claude/skills/kb0/` into your project. There's also a machine-readable [`llms.txt`](https://kb0.dev/llms.txt) any agent can fetch for the same.
+
 See the guides:
 
 - [Claude Desktop setup](docs/quickstart-claude-desktop.md)
