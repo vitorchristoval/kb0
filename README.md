@@ -27,17 +27,13 @@ Most AI agents write to flat files, SQLite, or ad-hoc vector stores with no hist
 
 ```bash
 npm install -g kb0-mcp
+kb0 init my-vault          # a git-backed markdown vault
 
-kb0 init my-vault
-cd my-vault
-
-# Optional: configure agent permissions
-# nano .vault-policy.yaml
-
-kb0 serve --agent my-agent
+# Optional: restrict per-agent permissions (permissive by default).
+# Create .vault-policy.yaml — see the ACL section below.
 ```
 
-Your vault is now a running MCP server. Connect any agent.
+That's the whole setup. You don't run a server yourself — with MCP (stdio), whatever connects launches `kb0 serve` for you: an agent host (config below), or a client like `kb0-mcp/client` (TypeScript) / `kb0-mcp` (Python). Pick one:
 
 **Claude Desktop** — add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
