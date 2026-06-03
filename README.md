@@ -53,6 +53,17 @@ Your vault is now a running MCP server. Connect any agent.
 }
 ```
 
+**TypeScript** — the npm `kb0-mcp` package ships a typed client at `kb0-mcp/client`, no extra install:
+
+```ts
+import { VaultClient } from 'kb0-mcp/client';
+
+const kb = await VaultClient.connect({ vault: './my-vault', agent: 'my-agent' });
+await kb.write('notes/auth.md', { title: 'Auth', content: '…', tags: ['auth'] });
+const hits = await kb.search('token security', { limit: 5 });
+await kb.close();
+```
+
 **Python** — `pip install kb0-mcp` for a native async client ([kb0-python](https://github.com/vitorchristoval/kb0-python)). **Anthropic SDK / OpenAI / LangGraph** — see [docs/quickstart-sdk.md](docs/quickstart-sdk.md).
 
 ---
