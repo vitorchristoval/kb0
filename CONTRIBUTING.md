@@ -8,7 +8,7 @@ Thanks for your interest. kb0 is Apache 2.0 — contributions are welcome.
 git clone https://github.com/vitorchristoval/kb0
 cd kb0
 npm install
-npm run test:run   # 111 tests, should all pass
+npm run test:run   # 148 tests, should all pass
 npm run typecheck  # should be clean
 ```
 

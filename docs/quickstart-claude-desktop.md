@@ -17,9 +17,8 @@ cd my-vault
 This creates:
 ```
 my-vault/
-├── _inbox/               agents write here by default
-├── .vault-policy.yaml    ACL config (edit before production use)
-└── .gitignore
+├── _inbox/      agents write here by default
+└── .gitignore   (the vault is a fresh git repo; no ACL file yet — see below)
 ```
 
 ## Step 2 — Configure Claude Desktop
@@ -73,7 +72,7 @@ Every write Claude made is a commit with full provenance.
 
 ## Configure ACL (recommended)
 
-Edit `.vault-policy.yaml` to restrict what Claude can write:
+By default the vault is permissive (any agent, full access) and prints a warning on boot. Create `.vault-policy.yaml` in the vault root to restrict what Claude can write:
 
 ```yaml
 version: 1

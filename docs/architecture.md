@@ -79,9 +79,9 @@ REST is a future option (the abstraction is already clean) but it's not in the M
 
 ## What's next
 
-Sprint 5 is documentation and launch. Sprint 6 is the public release on npm.
+kb0 is released — `kb0-mcp` on npm (server + a typed TypeScript client) and on PyPI (Python client).
 
-Future work after launch:
+Future work:
 - HTTP/SSE transport for cloud-hosted agents
 - Multi-vault isolation (enterprise tier)
 - Promotion workflow with human review

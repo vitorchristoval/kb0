@@ -34,8 +34,9 @@ Expected output (abridged):
   ✓ _inbox/key-management.md  (…)
 
 → searching the vault for 'token security'
+  1.000  Signing key management  (_inbox/key-management.md)
   0.500  Refresh token rotation  (_inbox/refresh-token-rotation.md)
-  ...
+  0.333  JWT vs server sessions  (_inbox/jwt-vs-sessions.md)
 
 → which notes link to jwt-vs-sessions.md?
   ← Refresh token rotation  (_inbox/refresh-token-rotation.md)
