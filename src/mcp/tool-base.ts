@@ -52,16 +52,25 @@ export function defineTool<Shape extends ZodRawShape, O>(config: {
    * to metadata only — never note bodies — so the log stays content-free.
    */
   audit?: (input: z.infer<ZodObject<Shape>>) => Record<string, unknown>;
+  /**
+   * Maps the handler output to content-free fields recorded only on the
+   * tool.success log (e.g. the paths a search returned). Runs after a
+   * successful handler — there is no output to inspect on failure, so these
+   * fields are absent from error logs. Keep it to metadata, never note bodies.
+   */
+  auditResult?: (output: O) => Record<string, unknown>;
 }): Tool & {
   handler: typeof config.handler;
   format: typeof config.format;
   audit: typeof config.audit;
+  auditResult: typeof config.auditResult;
 } {
   return {
     name: config.name,
     handler: config.handler,
     format: config.format,
     audit: config.audit,
+    auditResult: config.auditResult,
 
     register(server: McpServer, ctx: ToolContext): void {
       // TypeScript cannot propagate the Shape generic through server.tool()'s
@@ -85,6 +94,7 @@ export function defineTool<Shape extends ZodRawShape, O>(config: {
               agent: ctx.agentIdentity,
               duration_ms: Date.now() - start,
               ...audit,
+              ...(config.auditResult?.(output) ?? {}),
             });
             return ok(config.format(output), output);
           } catch (e) {

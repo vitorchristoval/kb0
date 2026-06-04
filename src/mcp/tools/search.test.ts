@@ -45,6 +45,20 @@ describe('vault.search', () => {
     expect(out.results.length).toBeGreaterThan(0);
   });
 
+  it('auditResult records returned paths and count for the success log', () => {
+    const out = {
+      results: [
+        { path: 'notes/rust.md', title: 'A', author: 'human', status: 'draft', score: 0.9, excerpt: 'x' },
+        { path: 'notes/go.md', title: 'B', author: 'human', status: 'draft', score: 0.5, excerpt: 'y' },
+      ],
+      warnings: [],
+    };
+    expect(searchTool.auditResult?.(out)).toEqual({
+      result_paths: ['notes/rust.md', 'notes/go.md'],
+      result_count: 2,
+    });
+  });
+
   it('format lists results with title path and score', () => {
     const out = {
       results: [{ path: 'a.md', title: 'A', author: 'human', status: 'draft', score: 0.9, excerpt: 'snippet' }],
