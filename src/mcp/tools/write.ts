@@ -12,6 +12,8 @@ Author, ID, created, and updated are always set by the server from your agent id
 
   inputSchema: WriteInput,
 
+  audit: (input) => ({ path: input.path }),
+
   handler: async (input, ctx) => {
     ctx.policy.check(ctx.agentIdentity, 'write', input.path);
 

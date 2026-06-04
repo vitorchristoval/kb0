@@ -11,6 +11,8 @@ Do not use this when you already know the exact path; use vault.read directly.`,
 
   inputSchema: SearchInput,
 
+  audit: (input) => ({ query: input.query, mode: input.mode }),
+
   handler: async (input, ctx) => {
     const allowedGlobs = ctx.policy.getAllowedReadGlobs(ctx.agentIdentity);
 

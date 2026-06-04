@@ -46,14 +46,22 @@ export function defineTool<Shape extends ZodRawShape, O>(config: {
   inputSchema: ZodObject<Shape>;
   handler: (input: z.infer<ZodObject<Shape>>, ctx: ToolContext) => Promise<O>;
   format: (output: O) => string;
+  /**
+   * Maps the call input to content-free fields recorded on the tool.success /
+   * tool.error audit log (e.g. the path read or the query searched). Keep this
+   * to metadata only — never note bodies — so the log stays content-free.
+   */
+  audit?: (input: z.infer<ZodObject<Shape>>) => Record<string, unknown>;
 }): Tool & {
   handler: typeof config.handler;
   format: typeof config.format;
+  audit: typeof config.audit;
 } {
   return {
     name: config.name,
     handler: config.handler,
     format: config.format,
+    audit: config.audit,
 
     register(server: McpServer, ctx: ToolContext): void {
       // TypeScript cannot propagate the Shape generic through server.tool()'s
@@ -67,12 +75,16 @@ export function defineTool<Shape extends ZodRawShape, O>(config: {
         config.inputSchema.shape,
         async (args: z.infer<ZodObject<Shape>>) => {
           const start = Date.now();
+          // Content-free audit fields (path read, query searched, …) so every
+          // success and failure is attributable to a specific target.
+          const audit = config.audit?.(args) ?? {};
           try {
             const output = await config.handler(args, ctx);
             ctx.log('info', 'tool.success', {
               tool: config.name,
               agent: ctx.agentIdentity,
               duration_ms: Date.now() - start,
+              ...audit,
             });
             return ok(config.format(output), output);
           } catch (e) {
@@ -83,6 +95,7 @@ export function defineTool<Shape extends ZodRawShape, O>(config: {
                 agent: ctx.agentIdentity,
                 duration_ms,
                 error_code: e.code,
+                ...audit,
               });
               return err(formatKbError(e));
             }
@@ -91,6 +104,7 @@ export function defineTool<Shape extends ZodRawShape, O>(config: {
               agent: ctx.agentIdentity,
               duration_ms,
               error: String(e),
+              ...audit,
             });
             throw e;
           }

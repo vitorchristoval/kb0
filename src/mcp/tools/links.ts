@@ -11,6 +11,8 @@ For incoming links (what links to this note), use vault.backlinks instead.`,
 
   inputSchema: LinksInput,
 
+  audit: (input) => ({ path: input.path }),
+
   handler: async (input, ctx) => {
     ctx.policy.check(ctx.agentIdentity, 'read', input.path);
     const links = ctx.index.links(input.path);

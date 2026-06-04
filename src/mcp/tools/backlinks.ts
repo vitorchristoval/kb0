@@ -11,6 +11,8 @@ For outgoing links from a note, use vault.links instead.`,
 
   inputSchema: BacklinksInput,
 
+  audit: (input) => ({ path: input.path }),
+
   handler: async (input, ctx) => {
     ctx.policy.check(ctx.agentIdentity, 'read', input.path);
     const backlinks = ctx.index.backlinks(input.path);

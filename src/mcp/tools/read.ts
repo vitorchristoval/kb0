@@ -11,6 +11,8 @@ Do not use this for searching; use vault.search or vault.list to discover notes 
 
   inputSchema: ReadInput,
 
+  audit: (input) => ({ path: input.path }),
+
   handler: async (input, ctx) => {
     ctx.policy.check(ctx.agentIdentity, 'read', input.path);
     const note = await ctx.store.read(input.path);

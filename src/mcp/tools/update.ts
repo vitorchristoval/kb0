@@ -11,6 +11,8 @@ Do not use this to create new notes; use vault.write instead.`,
 
   inputSchema: UpdateInput,
 
+  audit: (input) => ({ path: input.path }),
+
   handler: async (input, ctx) => {
     ctx.policy.check(ctx.agentIdentity, 'update', input.path);
 

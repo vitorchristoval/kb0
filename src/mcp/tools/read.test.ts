@@ -22,6 +22,10 @@ describe('vault.read', () => {
     expect(out.frontmatter.author).toBe('agent:test-agent');
   });
 
+  it('audit records the path so reads are attributable in the log', () => {
+    expect(readTool.audit?.({ path: 'notes/r.md' })).toEqual({ path: 'notes/r.md' });
+  });
+
   it('throws KbNotFoundError for missing note', async () => {
     await expect(readTool.handler({ path: 'ghost.md' }, t.ctx)).rejects.toThrow(KbNotFoundError);
   });
