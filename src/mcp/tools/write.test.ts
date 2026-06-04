@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { KbError, KbNotFoundError } from '../../errors.js';
+import { KbError } from '../../errors.js';
 import { writeTool } from './write.js';
 import { readTool } from './read.js';
 import { createTestContext, type TestCtx } from './test-helpers.js';
