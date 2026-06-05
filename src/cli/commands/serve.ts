@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { resolveEmbedding } from '../../embedding/resolveEmbedding.js';
+import { resolveForwarder } from '../../forwarder/resolveForwarder.js';
 import { GitAdapter } from '../../git/GitAdapter.js';
 import { KbIndex } from '../../index/KbIndex.js';
 import { FileLogger } from '../../logger/FileLogger.js';
@@ -43,6 +44,9 @@ export async function serveVault(options: ServeOptions): Promise<void> {
   const index = new KbIndex({ dbPath, vaultDir, embedding });
   const store = new KbStore(vaultDir, git, { index, watcher });
 
+  const { forwarder, summary: forwarderSummary } = resolveForwarder(logger);
+  process.stderr.write(`[kb0] audit forwarding: ${forwarderSummary}\n`);
+
   const mcpServer = new KbMcpServer({
     store,
     index,
@@ -51,10 +55,12 @@ export async function serveVault(options: ServeOptions): Promise<void> {
     agentIdentity: agentName,
     vaultDir,
     logger,
+    onEvent: forwarder ? (event) => forwarder.enqueue(event) : undefined,
   });
 
   const shutdown = async (): Promise<void> => {
     logger.log('info', 'server.shutdown', { agent: agentName });
+    await forwarder?.close();
     await mcpServer.close();
     process.exit(0);
   };

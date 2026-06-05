@@ -50,6 +50,11 @@ export type { Logger, LogLevel } from './logger/Logger.js';
 export { FileLogger } from './logger/FileLogger.js';
 export { NullLogger } from './logger/NullLogger.js';
 
+export { OperationEventForwarder } from './forwarder/OperationEventForwarder.js';
+export type { ForwarderConfig, ForwardedEvent } from './forwarder/OperationEventForwarder.js';
+export { resolveForwarder } from './forwarder/resolveForwarder.js';
+export type { ResolvedForwarder } from './forwarder/resolveForwarder.js';
+
 export { KbMcpServer } from './mcp/server.js';
 export type { KbMcpServerConfig } from './mcp/server.js';
 export { defineTool } from './mcp/tool-base.js';
