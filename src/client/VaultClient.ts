@@ -27,6 +27,10 @@ export interface VaultClientOptions {
   env?: Record<string, string>;
   /** Convenience for OPENAI_API_KEY on the server (enables semantic search). */
   openaiApiKey?: string;
+  /** kb0 cloud API key — enables content-free audit forwarding (sets KB0_API_KEY on the server). */
+  apiKey?: string;
+  /** Override the audit ingest endpoint (sets KB0_INGEST_URL). Defaults to the kb0 cloud. */
+  ingestUrl?: string;
   /** Require a .vault-policy.yaml to be present (passes `--strict`). */
   strict?: boolean;
 }
@@ -140,6 +144,8 @@ export class VaultClient {
     }
     if (this.options.env) Object.assign(env, this.options.env);
     if (this.options.openaiApiKey) env['OPENAI_API_KEY'] = this.options.openaiApiKey;
+    if (this.options.apiKey) env['KB0_API_KEY'] = this.options.apiKey;
+    if (this.options.ingestUrl) env['KB0_INGEST_URL'] = this.options.ingestUrl;
 
     const args = ['serve', '--agent', agent, '--vault', vault];
     if (strict) args.push('--strict');

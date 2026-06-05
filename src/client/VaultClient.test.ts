@@ -4,13 +4,16 @@ const h = vi.hoisted(() => ({
   connect: vi.fn(),
   callTool: vi.fn(),
   close: vi.fn(),
+  transport: vi.fn(
+    (_opts: { command: string; args: string[]; env: Record<string, string> }) => ({}),
+  ),
 }));
 
 vi.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
   Client: vi.fn(() => ({ connect: h.connect, callTool: h.callTool, close: h.close })),
 }));
 vi.mock('@modelcontextprotocol/sdk/client/stdio.js', () => ({
-  StdioClientTransport: vi.fn(() => ({})),
+  StdioClientTransport: h.transport,
 }));
 
 import { VaultClient } from './VaultClient.js';
@@ -26,6 +29,29 @@ describe('VaultClient', () => {
     h.connect.mockReset();
     h.callTool.mockReset();
     h.close.mockReset();
+    h.transport.mockClear();
+  });
+
+  it('maps apiKey and ingestUrl to KB0_* env on the spawned server', async () => {
+    h.connect.mockResolvedValue(undefined);
+    await VaultClient.connect({
+      vault: './v',
+      agent: 'bot',
+      apiKey: 'kb0_live_x',
+      ingestUrl: 'http://localhost:9000/ingest',
+    });
+
+    const env = h.transport.mock.calls[0][0].env;
+    expect(env.KB0_API_KEY).toBe('kb0_live_x');
+    expect(env.KB0_INGEST_URL).toBe('http://localhost:9000/ingest');
+  });
+
+  it('does not set KB0_* env when apiKey is omitted', async () => {
+    h.connect.mockResolvedValue(undefined);
+    await VaultClient.connect({ vault: './v', agent: 'bot' });
+
+    const env = h.transport.mock.calls[0][0].env;
+    expect(env.KB0_API_KEY).toBeUndefined();
   });
 
   it('write stamps default status/tags and returns structured content', async () => {
