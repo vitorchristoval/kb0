@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { KbError } from '../errors.js';
 import { KbPolicy } from './KbPolicy.js';
+import type { PolicyEngine } from './PolicyEngine.js';
 
 const POLICY_YAML = `
 version: 1
@@ -33,6 +34,14 @@ describe('KbPolicy', () => {
   });
   afterEach(async () => {
     await rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('satisfies the PolicyEngine interface (Seam 1)', () => {
+    const engine: PolicyEngine = KbPolicy.allowAll();
+    expect(typeof engine.check).toBe('function');
+    expect(typeof engine.getAllowedReadGlobs).toBe('function');
+    expect(engine.mode).toBe('permissive');
+    expect(engine.policyFileExists).toBe(false);
   });
 
   describe('load', () => {

@@ -4,20 +4,49 @@ import { type ZodObject, type ZodRawShape, z } from 'zod';
 import { KbError } from '../errors.js';
 import type { KbIndex } from '../index/KbIndex.js';
 import type { Logger } from '../logger/Logger.js';
-import type { KbPolicy } from '../policy/KbPolicy.js';
+import type { PolicyEngine } from '../policy/PolicyEngine.js';
 import type { KbStore } from '../store/KbStore.js';
 import { formatKbError } from './errors.js';
+
+/**
+ * A content-free record of one tool call, for audit / observability sinks.
+ * Carries metadata only (target path, query, returned paths) — never note bodies —
+ * so a downstream sink can stream it without seeing the vault's contents.
+ */
+export interface OperationEvent {
+  /** Tool name, e.g. 'vault.read'. */
+  tool: string;
+  /** Agent identity from the session. */
+  agent: string;
+  /** ISO-8601 timestamp captured when the call finished. */
+  ts: string;
+  /** true on success, false when the tool returned or threw an error. */
+  ok: boolean;
+  /** Wall-clock duration in milliseconds. */
+  durationMs: number;
+  /** Whether the operation mutated the vault (write / update / delete). */
+  mutates: boolean;
+  /** Error code when ok === false (e.g. 'NOT_FOUND', 'ACL_DENIED', 'UNEXPECTED'). */
+  errorCode?: string;
+  /** Content-free target metadata (path, query, result_paths, …) — never note bodies. */
+  fields: Record<string, unknown>;
+}
 
 export interface ToolContext {
   readonly store: KbStore;
   readonly index: KbIndex;
-  readonly policy: KbPolicy;
+  readonly policy: PolicyEngine;
   readonly agentIdentity: string;
   readonly vaultDir: string;
   readonly logFile: string;
   readonly logger: Logger;
   /** Convenience alias — delegates to logger.log. */
   log(level: 'info' | 'warn' | 'error', event: string, fields?: Record<string, unknown>): void;
+  /**
+   * Optional sink for content-free operation events. Defaulted off — when set
+   * (e.g. by an enterprise audit forwarder), every tool call emits one event.
+   */
+  onEvent?(event: OperationEvent): void;
 }
 
 export interface Tool {
@@ -59,11 +88,17 @@ export function defineTool<Shape extends ZodRawShape, O>(config: {
    * fields are absent from error logs. Keep it to metadata, never note bodies.
    */
   auditResult?: (output: O) => Record<string, unknown>;
+  /**
+   * Marks the tool as mutating the vault (write / update / delete) — surfaced
+   * as `OperationEvent.mutates` so a sink can tell reads from writes.
+   */
+  mutates?: boolean;
 }): Tool & {
   handler: typeof config.handler;
   format: typeof config.format;
   audit: typeof config.audit;
   auditResult: typeof config.auditResult;
+  mutates: typeof config.mutates;
 } {
   return {
     name: config.name,
@@ -71,6 +106,7 @@ export function defineTool<Shape extends ZodRawShape, O>(config: {
     format: config.format,
     audit: config.audit,
     auditResult: config.auditResult,
+    mutates: config.mutates,
 
     register(server: McpServer, ctx: ToolContext): void {
       // TypeScript cannot propagate the Shape generic through server.tool()'s
@@ -87,15 +123,36 @@ export function defineTool<Shape extends ZodRawShape, O>(config: {
           // Content-free audit fields (path read, query searched, …) so every
           // success and failure is attributable to a specific target.
           const audit = config.audit?.(args) ?? {};
+          // Emit a content-free operation event to the optional sink. Reuses the
+          // same fields that go to the log, so the two never drift.
+          const emit = (
+            success: boolean,
+            durationMs: number,
+            fields: Record<string, unknown>,
+            errorCode?: string,
+          ): void => {
+            ctx.onEvent?.({
+              tool: config.name,
+              agent: ctx.agentIdentity,
+              ts: new Date().toISOString(),
+              ok: success,
+              durationMs,
+              mutates: config.mutates ?? false,
+              ...(errorCode ? { errorCode } : {}),
+              fields,
+            });
+          };
           try {
             const output = await config.handler(args, ctx);
+            const duration_ms = Date.now() - start;
+            const fields = { ...audit, ...(config.auditResult?.(output) ?? {}) };
             ctx.log('info', 'tool.success', {
               tool: config.name,
               agent: ctx.agentIdentity,
-              duration_ms: Date.now() - start,
-              ...audit,
-              ...(config.auditResult?.(output) ?? {}),
+              duration_ms,
+              ...fields,
             });
+            emit(true, duration_ms, fields);
             return ok(config.format(output), output);
           } catch (e) {
             const duration_ms = Date.now() - start;
@@ -107,6 +164,7 @@ export function defineTool<Shape extends ZodRawShape, O>(config: {
                 error_code: e.code,
                 ...audit,
               });
+              emit(false, duration_ms, audit, e.code);
               return err(formatKbError(e));
             }
             ctx.log('error', 'tool.unexpected', {
@@ -116,6 +174,7 @@ export function defineTool<Shape extends ZodRawShape, O>(config: {
               error: String(e),
               ...audit,
             });
+            emit(false, duration_ms, audit, 'UNEXPECTED');
             throw e;
           }
         },

@@ -4,6 +4,7 @@ import { load as yamlLoad } from 'js-yaml';
 import { minimatch } from 'minimatch';
 import { z } from 'zod';
 import { KbError } from '../errors.js';
+import type { PolicyEngine } from './PolicyEngine.js';
 
 // ── Zod schema — invalid file = boot failure, never fall-through ──────────────
 
@@ -35,7 +36,7 @@ export type PolicyOperation = 'read' | 'write' | 'update' | 'delete';
 
 // ── KbPolicy ─────────────────────────────────────────────────────────────────
 
-export class KbPolicy {
+export class KbPolicy implements PolicyEngine {
   readonly mode: PolicyMode;
   readonly policyFileExists: boolean;
 

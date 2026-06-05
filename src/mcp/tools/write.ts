@@ -12,6 +12,8 @@ Author, ID, created, and updated are always set by the server from your agent id
 
   inputSchema: WriteInput,
 
+  mutates: true,
+
   audit: (input) => ({ path: input.path }),
 
   handler: async (input, ctx) => {

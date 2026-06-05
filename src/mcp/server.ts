@@ -4,21 +4,25 @@ import path from 'node:path';
 import type { KbIndex } from '../index/KbIndex.js';
 import type { Logger } from '../logger/Logger.js';
 import { NullLogger } from '../logger/NullLogger.js';
-import type { KbPolicy } from '../policy/KbPolicy.js';
+import type { PolicyEngine } from '../policy/PolicyEngine.js';
 import type { KbStore } from '../store/KbStore.js';
 import type { KbWatcher } from '../watcher/KbWatcher.js';
 import { KB0_VERSION } from '../version.js';
-import type { ToolContext } from './tool-base.js';
+import type { OperationEvent, Tool, ToolContext } from './tool-base.js';
 import { ALL_TOOLS } from './tools/index.js';
 
 export interface KbMcpServerConfig {
   store: KbStore;
   index: KbIndex;
-  policy: KbPolicy;
+  policy: PolicyEngine;
   watcher?: KbWatcher;
   agentIdentity: string;
   vaultDir: string;
   logger?: Logger;
+  /** Optional content-free operation-event sink (audit / observability). */
+  onEvent?(event: OperationEvent): void;
+  /** Tools to register. Defaults to ALL_TOOLS; enterprise passes [...ALL_TOOLS, ...eeTools]. */
+  tools?: Tool[];
 }
 
 export class KbMcpServer {
@@ -42,9 +46,10 @@ export class KbMcpServer {
       logFile,
       logger,
       log: (level, event, fields) => logger.log(level, event, fields),
+      onEvent: config.onEvent,
     };
 
-    for (const tool of ALL_TOOLS) {
+    for (const tool of config.tools ?? ALL_TOOLS) {
       tool.register(this.server, ctx);
     }
   }

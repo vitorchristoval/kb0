@@ -11,6 +11,8 @@ Do not use this to create new notes; use vault.write instead.`,
 
   inputSchema: UpdateInput,
 
+  mutates: true,
+
   audit: (input) => ({ path: input.path }),
 
   handler: async (input, ctx) => {

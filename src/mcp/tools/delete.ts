@@ -11,6 +11,8 @@ Prefer vault.update with status "canonical" to promote a note, rather than delet
 
   inputSchema: DeleteInput,
 
+  mutates: true,
+
   audit: (input) => ({ path: input.path }),
 
   handler: async (input, ctx) => {

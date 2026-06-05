@@ -44,6 +44,7 @@ export { LocalFileWatcher } from './watcher/LocalFileWatcher.js';
 
 export { KbPolicy } from './policy/KbPolicy.js';
 export type { PolicyMode, PolicyOperation } from './policy/KbPolicy.js';
+export type { PolicyEngine } from './policy/PolicyEngine.js';
 
 export type { Logger, LogLevel } from './logger/Logger.js';
 export { FileLogger } from './logger/FileLogger.js';
@@ -51,6 +52,8 @@ export { NullLogger } from './logger/NullLogger.js';
 
 export { KbMcpServer } from './mcp/server.js';
 export type { KbMcpServerConfig } from './mcp/server.js';
-export type { ToolContext } from './mcp/tool-base.js';
+export { defineTool } from './mcp/tool-base.js';
+export type { Tool, ToolContext, OperationEvent } from './mcp/tool-base.js';
+export { ALL_TOOLS } from './mcp/tools/index.js';
 
 export { KB0_VERSION } from './version.js';
