@@ -10,12 +10,13 @@
 
 ## Why kb0
 
-Most AI agents write to flat files, SQLite, or ad-hoc vector stores with no history, no permissions, and no way to audit what changed. kb0 is the missing persistence layer: every note is a markdown file, every write is a git commit, and every agent operation goes through a typed MCP interface with optional ACL.
+Most AI agents write to flat files, SQLite, or ad-hoc vector stores with no history, no permissions, and no way to audit what changed — let alone what was read. kb0 is the missing persistence layer: every note is a markdown file, every write is a git commit, every read and search is logged, and every agent operation goes through a typed MCP interface with optional ACL.
 
 | | kb0 | basic-memory | mcp-obsidian | Mem0 / Letta | Pinecone |
 |---|---|---|---|---|---|
 | Markdown files | ✓ | ✓ | ✓ | ✗ | ✗ |
 | Git-backed history | ✓ | ✗ | ✗ | ✗ | ✗ |
+| Read & search audit log | ✓ | ✗ | ✗ | ✗ | ✗ |
 | MCP-native | ✓ | partial | ✓ | ✗ | ✗ |
 | ACL per agent | ✓ | ✗ | ✗ | ✗ | ✗ |
 | Hybrid search (FTS5 + vec) | ✓ | ✗ | ✗ | ✓ | ✓ |
@@ -234,6 +235,23 @@ kb0 reindex
 # Full rebuild
 kb0 reindex --rebuild
 ```
+
+---
+
+## Audit log
+
+Git records what **changed** — but agents also read and search, and that trail usually disappears. kb0 logs every tool call to `.vault-index/kb0.log` as content-free JSON lines: the path read, the query searched, and the paths a search returned. Note bodies are never written to the log.
+
+```bash
+$ tail -f my-vault/.vault-index/kb0.log
+```
+```json
+{"event":"tool.success","tool":"vault.search","agent":"research-bot","query":"token security","mode":"hybrid","result_paths":["notes/auth.md"],"result_count":1}
+{"event":"tool.success","tool":"vault.read","agent":"research-bot","path":"notes/auth.md"}
+{"event":"tool.error","tool":"vault.read","agent":"research-bot","error_code":"NOT_FOUND","path":"notes/secrets.md"}
+```
+
+Every event carries the tool, the agent identity, and a duration. Failed and denied calls are logged too, so you can see what an agent *attempted*, not just what it changed.
 
 ---
 
