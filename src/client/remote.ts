@@ -77,7 +77,10 @@ export class RemoteVault {
     url: string,
     init: { body?: unknown; ifMatch?: string } = {},
   ): Promise<Response> {
-    const headers: Record<string, string> = { authorization: `Bearer ${this.apiKey}` };
+    const headers: Record<string, string> = {
+      authorization: `Bearer ${this.apiKey}`,
+      'x-kb0-agent': this.agent, // stamps the agent identity on hosted-vault audit events
+    };
     if (init.body !== undefined) headers['content-type'] = 'application/json';
     if (init.ifMatch) headers['if-match'] = init.ifMatch;
     return fetch(url, {
