@@ -61,6 +61,19 @@ const hits = await kb.search('token security', { limit: 5 });
 await kb.close();
 ```
 
+**Hosted vault (kb0 cloud)** — point the same client at `kb0://<name>` with your API key for a vault hosted on our servers — no local files, no subprocess. Same methods, same key as the [audit log](#audit-log):
+
+```ts
+const kb = await VaultClient.connect({
+  vault: 'kb0://team-kb',
+  agent: 'my-agent',
+  apiKey: process.env.KB0_API_KEY, // create one in the kb0 dashboard
+});
+await kb.write('notes/auth.md', { title: 'Auth', content: '…' });
+```
+
+Reads, writes, list and recent work today; semantic search over hosted vaults is coming soon.
+
 **Python** — `pip install kb0-mcp` for a native async client ([kb0-python](https://github.com/vitorchristoval/kb0-python)). **Anthropic SDK / OpenAI / LangGraph** — see [docs/quickstart-sdk.md](docs/quickstart-sdk.md).
 
 ---

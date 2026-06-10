@@ -13,11 +13,16 @@ import type {
 } from '../mcp/schemas.js';
 import { KB0_VERSION } from '../version.js';
 import { errorFromText } from './errors.js';
+import { DEFAULT_CLOUD_URL, RemoteVault } from './remote.js';
 
 type NoteStatus = 'draft' | 'reviewed' | 'canonical';
 
 export interface VaultClientOptions {
-  /** Path to the vault directory. */
+  /**
+   * The vault to connect to. A filesystem path uses a local `kb0 serve`
+   * subprocess; a `kb0://<name>` URI uses the hosted vault for your API key's
+   * tenant (REST to the kb0 cloud — no subprocess, `apiKey` required).
+   */
   vault: string;
   /** Agent identity — stamped on writes and checked against ACL. */
   agent: string;
@@ -31,6 +36,8 @@ export interface VaultClientOptions {
   apiKey?: string;
   /** Override the audit ingest endpoint (sets KB0_INGEST_URL). Defaults to the kb0 cloud. */
   ingestUrl?: string;
+  /** Base URL of the kb0 cloud for `kb0://` vaults. Defaults to KB0_CLOUD_URL or the hosted kb0 cloud. */
+  cloudUrl?: string;
   /** Require a .vault-policy.yaml to be present (passes `--strict`). */
   strict?: boolean;
 }
@@ -125,10 +132,11 @@ function unwrap<T>(result: unknown): T {
 export class VaultClient {
   private client: Client | null = null;
   private transport: StdioClientTransport | null = null;
+  private remote: RemoteVault | null = null;
 
   private constructor(private readonly options: VaultClientOptions) {}
 
-  /** Spawn `kb0 serve` and connect to it over stdio. */
+  /** Connect to a local (`kb0 serve` subprocess) or hosted (`kb0://`) vault. */
   static async connect(options: VaultClientOptions): Promise<VaultClient> {
     const vc = new VaultClient(options);
     await vc.open();
@@ -137,6 +145,16 @@ export class VaultClient {
 
   private async open(): Promise<void> {
     const { vault, agent, command = 'kb0', strict = false } = this.options;
+
+    // Hosted vault: talk REST to the kb0 cloud, no subprocess.
+    if (vault.startsWith('kb0://')) {
+      if (!this.options.apiKey) {
+        throw new Error('A hosted (kb0://) vault requires an apiKey — create one in the kb0 dashboard.');
+      }
+      const cloudUrl = this.options.cloudUrl ?? process.env['KB0_CLOUD_URL'] ?? DEFAULT_CLOUD_URL;
+      this.remote = new RemoteVault(cloudUrl, this.options.apiKey, agent);
+      return;
+    }
 
     const env: Record<string, string> = {};
     for (const [key, value] of Object.entries(process.env)) {
@@ -155,11 +173,12 @@ export class VaultClient {
     await this.client.connect(this.transport);
   }
 
-  /** Disconnect and stop the server subprocess. */
+  /** Disconnect and stop the server subprocess (no-op for hosted vaults). */
   async close(): Promise<void> {
     await this.client?.close();
     this.client = null;
     this.transport = null;
+    this.remote = null;
   }
 
   private async call<T>(name: string, args: Record<string, unknown>): Promise<T> {
@@ -173,6 +192,7 @@ export class VaultClient {
   // ── tools ──────────────────────────────────────────────────────────────────
 
   write(path: string, params: WriteParams): Promise<WriteOutput> {
+    if (this.remote) return this.remote.write(path, params);
     return this.call('vault.write', {
       path,
       title: params.title,
@@ -183,10 +203,12 @@ export class VaultClient {
   }
 
   read(path: string): Promise<ReadOutput> {
+    if (this.remote) return this.remote.read(path);
     return this.call('vault.read', { path });
   }
 
   update(path: string, params: UpdateParams): Promise<UpdateOutput> {
+    if (this.remote) return this.remote.update(path, params);
     const args: Record<string, unknown> = {
       path,
       content: params.content,
@@ -199,10 +221,12 @@ export class VaultClient {
   }
 
   delete(path: string): Promise<DeleteOutput> {
+    if (this.remote) return this.remote.delete(path);
     return this.call('vault.delete', { path });
   }
 
   search(query: string, params: SearchParams = {}): Promise<SearchOutput> {
+    if (this.remote) return Promise.reject(this.remote.unsupportedError('search'));
     const args: Record<string, unknown> = {
       query,
       mode: params.mode ?? 'hybrid',
@@ -214,6 +238,7 @@ export class VaultClient {
   }
 
   list(params: ListParams = {}): Promise<ListOutput> {
+    if (this.remote) return this.remote.list(params);
     const args: Record<string, unknown> = { limit: params.limit ?? 50 };
     if (params.prefix !== undefined) args['prefix'] = params.prefix;
     if (params.tag !== undefined) args['tag'] = params.tag;
@@ -222,18 +247,22 @@ export class VaultClient {
   }
 
   recent(limit = 10): Promise<RecentOutput> {
+    if (this.remote) return this.remote.recent(limit);
     return this.call('vault.recent', { limit });
   }
 
   backlinks(path: string): Promise<BacklinksOutput> {
+    if (this.remote) return Promise.reject(this.remote.unsupportedError('backlinks'));
     return this.call('vault.backlinks', { path });
   }
 
   links(path: string): Promise<LinksOutput> {
+    if (this.remote) return Promise.reject(this.remote.unsupportedError('links'));
     return this.call('vault.links', { path });
   }
 
   status(): Promise<StatusResult> {
+    if (this.remote) return this.remote.status(this.options.vault);
     return this.call('vault.status', {});
   }
 }
