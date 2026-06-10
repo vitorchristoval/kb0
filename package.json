@@ -1,6 +1,6 @@
 {
   "name": "kb0-mcp",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "The knowledge base layer for AI agents — markdown-first, MCP-native, with permissions and provenance built in.",
   "license": "Apache-2.0",
   "author": "Vitor Christoval",

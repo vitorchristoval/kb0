@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { VaultClient } from './VaultClient.js';
-import { KbAclDeniedError, KbConflictError, KbError, KbNotFoundError } from './errors.js';
+import { KbAclDeniedError, KbConflictError, KbNotFoundError } from './errors.js';
 
 const CLOUD = 'https://cloud.test';
 
@@ -170,12 +170,29 @@ describe('VaultClient hosted (kb0://) mode', () => {
     await kb.close();
   });
 
-  it('reports search/links/backlinks as unavailable for hosted vaults', async () => {
-    installFetch(() => json({ entries: [] }));
+  it('searches, links and backlinks via the cloud index', async () => {
+    installFetch((c) => {
+      if (c.url.includes('/v1/vault/search')) {
+        return json({ results: [{ path: 'notes/a.md', title: 'A', author: 'bot', status: 'draft', score: 0.5, excerpt: 'JWT…' }], warnings: [] });
+      }
+      if (c.url.includes('/v1/vault/links')) return json({ path: 'notes/a.md', links: [{ path: 'notes/b.md', title: 'B' }] });
+      if (c.url.includes('/v1/vault/backlinks')) return json({ path: 'notes/b.md', backlinks: [{ path: 'notes/a.md', title: 'A' }] });
+      return json({});
+    });
     const kb = await hosted();
-    await expect(kb.search('q')).rejects.toBeInstanceOf(KbError);
-    await expect(kb.links('a.md')).rejects.toThrow(/hosted/i);
-    await expect(kb.backlinks('a.md')).rejects.toThrow(/hosted/i);
+
+    const s = await kb.search('jwt', { limit: 5, filters: { status: 'draft', tags: ['auth'] } });
+    expect(calls[0].url).toContain('/v1/vault/search?q=jwt');
+    expect(calls[0].url).toContain('limit=5');
+    expect(calls[0].url).toContain('status=draft');
+    expect(calls[0].url).toContain('tag=auth');
+    expect(s.results[0].path).toBe('notes/a.md');
+
+    const l = await kb.links('notes/a.md');
+    expect(l.links).toEqual([{ path: 'notes/b.md', title: 'B' }]);
+
+    const b = await kb.backlinks('notes/b.md');
+    expect(b.backlinks).toEqual([{ path: 'notes/a.md', title: 'A' }]);
     await kb.close();
   });
 });

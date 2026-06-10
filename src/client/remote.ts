@@ -1,9 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import type {
+  BacklinksOutput,
   DeleteOutput,
+  LinksOutput,
   ListOutput,
   ReadOutput,
   RecentOutput,
+  SearchOutput,
   UpdateOutput,
   WriteOutput,
 } from '../mcp/schemas.js';
@@ -15,7 +18,13 @@ import {
   KbNotFoundError,
   KbValidationError,
 } from './errors.js';
-import type { ListParams, StatusResult, UpdateParams, WriteParams } from './VaultClient.js';
+import type {
+  ListParams,
+  SearchParams,
+  StatusResult,
+  UpdateParams,
+  WriteParams,
+} from './VaultClient.js';
 
 export const DEFAULT_CLOUD_URL = 'https://kb0-api-production.up.railway.app';
 
@@ -205,6 +214,28 @@ export class RemoteVault {
     };
   }
 
+  async search(query: string, params: SearchParams = {}): Promise<SearchOutput> {
+    const qs = new URLSearchParams({ q: query });
+    if (params.limit) qs.set('limit', String(params.limit));
+    if (params.filters?.status) qs.set('status', params.filters.status);
+    if (params.filters?.tags?.length) qs.set('tag', params.filters.tags[0]);
+    const res = await this.request('GET', `${this.base}/v1/vault/search?${qs.toString()}`);
+    if (!res.ok) await this.throwFor(res);
+    return (await res.json()) as SearchOutput;
+  }
+
+  async links(path: string): Promise<LinksOutput> {
+    const res = await this.request('GET', `${this.base}/v1/vault/links?path=${encodeURIComponent(path)}`);
+    if (!res.ok) await this.throwFor(res);
+    return (await res.json()) as LinksOutput;
+  }
+
+  async backlinks(path: string): Promise<BacklinksOutput> {
+    const res = await this.request('GET', `${this.base}/v1/vault/backlinks?path=${encodeURIComponent(path)}`);
+    if (!res.ok) await this.throwFor(res);
+    return (await res.json()) as BacklinksOutput;
+  }
+
   async status(vault: string): Promise<StatusResult> {
     const entries = await this.tree();
     return {
@@ -220,11 +251,4 @@ export class RemoteVault {
     };
   }
 
-  /** Search/links/backlinks need the index that hosted vaults don't run yet. */
-  unsupportedError(feature: string): KbError {
-    return new KbError(
-      `${feature} is not available for hosted (kb0://) vaults yet — it needs the search ` +
-        `index, which ships in a later release. Use a local vault for ${feature} today.`,
-    );
-  }
 }

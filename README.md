@@ -72,7 +72,7 @@ const kb = await VaultClient.connect({
 await kb.write('notes/auth.md', { title: 'Auth', content: '…' });
 ```
 
-Reads, writes, list and recent work today; semantic search over hosted vaults is coming soon.
+All tools work on hosted vaults — read/write/update/delete, list/recent, keyword `search`, and the `links`/`backlinks` graph. (Semantic search over hosted vaults is coming; today hosted search is keyword.)
 
 **Python** — `pip install kb0-mcp` for a native async client ([kb0-python](https://github.com/vitorchristoval/kb0-python)). **Anthropic SDK / OpenAI / LangGraph** — see [docs/quickstart-sdk.md](docs/quickstart-sdk.md).
 

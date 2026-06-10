@@ -226,7 +226,7 @@ export class VaultClient {
   }
 
   search(query: string, params: SearchParams = {}): Promise<SearchOutput> {
-    if (this.remote) return Promise.reject(this.remote.unsupportedError('search'));
+    if (this.remote) return this.remote.search(query, params);
     const args: Record<string, unknown> = {
       query,
       mode: params.mode ?? 'hybrid',
@@ -252,12 +252,12 @@ export class VaultClient {
   }
 
   backlinks(path: string): Promise<BacklinksOutput> {
-    if (this.remote) return Promise.reject(this.remote.unsupportedError('backlinks'));
+    if (this.remote) return this.remote.backlinks(path);
     return this.call('vault.backlinks', { path });
   }
 
   links(path: string): Promise<LinksOutput> {
-    if (this.remote) return Promise.reject(this.remote.unsupportedError('links'));
+    if (this.remote) return this.remote.links(path);
     return this.call('vault.links', { path });
   }
 
