@@ -152,7 +152,8 @@ export class VaultClient {
         throw new Error('A hosted (kb0://) vault requires an apiKey — create one in the kb0 dashboard.');
       }
       const cloudUrl = this.options.cloudUrl ?? process.env['KB0_CLOUD_URL'] ?? DEFAULT_CLOUD_URL;
-      this.remote = new RemoteVault(cloudUrl, this.options.apiKey, agent);
+      const vaultName = vault.slice('kb0://'.length).replace(/\/+$/, '');
+      this.remote = new RemoteVault(cloudUrl, this.options.apiKey, agent, vaultName);
       return;
     }
 

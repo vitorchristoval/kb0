@@ -68,6 +68,8 @@ describe('VaultClient hosted (kb0://) mode', () => {
     await kb.recent();
     expect(calls[0].url).toBe(`${CLOUD}/v1/vault/tree`);
     expect(calls[0].headers.authorization).toBe('Bearer kb0_live_x');
+    // the kb0://team-kb name routes to the named vault server-side
+    expect(calls[0].headers['x-kb0-vault']).toBe('team-kb');
     await kb.close();
   });
 

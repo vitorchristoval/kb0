@@ -69,6 +69,8 @@ export class RemoteVault {
     cloudUrl: string,
     private readonly apiKey: string,
     private readonly agent: string,
+    /** Vault name parsed from kb0://<name> — routes to a named vault server-side. */
+    private readonly vaultName = '',
   ) {
     this.base = cloudUrl.replace(/\/+$/, '');
   }
@@ -90,6 +92,7 @@ export class RemoteVault {
       authorization: `Bearer ${this.apiKey}`,
       'x-kb0-agent': this.agent, // stamps the agent identity on hosted-vault audit events
     };
+    if (this.vaultName) headers['x-kb0-vault'] = this.vaultName; // kb0://<name> routing
     if (init.body !== undefined) headers['content-type'] = 'application/json';
     if (init.ifMatch) headers['if-match'] = init.ifMatch;
     return fetch(url, {
